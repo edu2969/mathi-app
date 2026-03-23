@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useSound } from "../providers";
 
 const levels = [
   { 
@@ -70,6 +71,22 @@ const challenges = [
 export default function NivelesPage() {
   const router = useRouter();
   const [selectedLevel, setSelectedLevel] = useState(0); // Índice del nivel seleccionado en carrusel
+  const [isNavigating, setIsNavigating] = useState(false);
+  const {
+    fadeOutLevelSound,
+    isMuted,
+    isPlaying,
+    playLevelSound,
+    setCurrentLevel,
+    toggleMute,
+  } = useSound();
+
+  // Efecto para cambiar la música cuando cambia el nivel seleccionado
+  useEffect(() => {
+    const newLevel = selectedLevel + 1; // Convertir índice a número de nivel
+    setCurrentLevel(newLevel);
+    playLevelSound(newLevel);
+  }, [playLevelSound, selectedLevel, setCurrentLevel]);
 
   const nextLevel = () => {
     if (selectedLevel < levels.length - 1) {
@@ -83,17 +100,31 @@ export default function NivelesPage() {
     }
   };
 
+  const navigateToExercise = async () => {
+    if (isNavigating) {
+      return;
+    }
+
+    setIsNavigating(true);
+
+    try {
+      await fadeOutLevelSound();
+    } finally {
+      router.push("/ejercicio/sumas");
+    }
+  };
+
   const handleLevelSelect = (levelId: number) => {
     const level = levels.find(l => l.id === levelId);
     if (level?.unlocked) {
-      router.push("/ejercicio/sumas");
+      void navigateToExercise();
     }
   };
 
   const handleChallengeSelect = (challengeId: number) => {
     const challenge = challenges.find(c => c.id === challengeId);
     if (challenge?.unlocked) {
-      router.push("/ejercicio/sumas");
+      void navigateToExercise();
     }
   };
 
@@ -107,6 +138,16 @@ export default function NivelesPage() {
         backgroundRepeat: 'no-repeat'
       }}
     >
+      {/* Botón de control de audio */}
+      <button
+        onClick={toggleMute}
+        className="absolute top-4 right-4 z-30 bg-black/50 backdrop-blur-sm p-3 rounded-full transition-all duration-200 hover:bg-black/70"
+      >
+        <span className="text-white text-xl">
+          {isMuted ? "🔇" : isPlaying ? "🔊" : "🔉"}
+        </span>
+      </button>
+
       {/* Carrusel de nivel seleccionado - 40% altura */}
       <div className="flex-2 flex flex-col justify-center items-center px-6 relative pt-6">
         <div className="relative w-full flex justify-center items-center">
@@ -146,7 +187,7 @@ export default function NivelesPage() {
                     isNext ? 'translate-x-8' : isPrev ? '-translate-x-8' : 'translate-x-0'
                   }`}
                 >
-                  <div className={`h-full ${level.unlocked ? 'cursor-pointer grayscale-0' : 'cursor-not-allowed grayscale'}`} onClick={() => handleLevelSelect(level.id)}>
+                  <div className={`h-full ${level.unlocked && !isNavigating ? 'cursor-pointer grayscale-0' : 'cursor-not-allowed grayscale'}`} onClick={() => handleLevelSelect(level.id)}>
                     <Image
                       src={level.image}
                       alt={level.title}
@@ -193,7 +234,7 @@ export default function NivelesPage() {
               key={challenge.id}
               onClick={() => handleChallengeSelect(challenge.id)}
               className={`relative w-30 h-36.75 transition-all duration-200 overflow-hidden ${
-                challenge.unlocked ? "cursor-pointer hover:scale-105" : "opacity-60"
+                challenge.unlocked && !isNavigating ? "cursor-pointer hover:scale-105" : "opacity-60"
               }`}
             >
               <Image
@@ -228,7 +269,7 @@ export default function NivelesPage() {
               {/* Lock overlay */}
               {!challenge.unlocked && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-4xl">
-                  <Image src="/candado.png" alt="Bloqueado" width={96} height={96} />
+                  <Image src="/candado.png" alt="Bloqueado" width={64} height={64} />
                 </div>
               )}
             </div>

@@ -1,9 +1,9 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useSound } from "../../providers";
 
 function generateProblem() {
   // Generar 8 sumandos como en el original (números del 2 al 8)
@@ -16,6 +16,15 @@ function generateProblem() {
 }
 
 const TOTAL_QUESTIONS = 3;
+const COUNTDOWN_STEPS = ["3", "2", "1", "Go!"];
+
+function formatElapsedTime(timeMs: number) {
+  if (timeMs < 1000) {
+    return `${Math.round(timeMs)} ms`;
+  }
+
+  return `${(timeMs / 1000).toFixed(timeMs >= 10000 ? 1 : 2)} s`;
+}
 
 // Componente del teclado numérico (adaptado de EjercicioDojo.tsx)
 function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
@@ -65,37 +74,77 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
 }
 
 export default function SumasPage() {
-  const { data: session } = useSession();
   const router = useRouter();
+  const { playResultSound, isMuted, toggleMute } = useSound();
 
   const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [stars, setStars] = useState(0);
+  const [averageTimeMs, setAverageTimeMs] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [finished, setFinished] = useState(false);
+  const [countdownStep, setCountdownStep] = useState(0);
+  const [isCountdownActive, setIsCountdownActive] = useState(true);
+  const [currentResponseTimeMs, setCurrentResponseTimeMs] = useState<number | null>(null);
+
+  const answerTimesRef = useRef<number[]>([]);
+  const questionStartTimeRef = useRef<number | null>(null);
 
   const problem = useMemo(() => generateProblem(), [questionIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!isCountdownActive) {
+      return;
+    }
+
+    if (countdownStep >= COUNTDOWN_STEPS.length - 1) {
+      const finishTimer = window.setTimeout(() => {
+        setIsCountdownActive(false);
+      }, 900);
+
+      return () => window.clearTimeout(finishTimer);
+    }
+
+    const timer = window.setTimeout(() => {
+      setCountdownStep((previousStep) => previousStep + 1);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [countdownStep, isCountdownActive]);
+
+  useEffect(() => {
+    if (!isCountdownActive && !finished && !isSubmitted) {
+      questionStartTimeRef.current = performance.now();
+    }
+  }, [finished, isCountdownActive, isSubmitted, questionIndex]);
+
   const handleDigit = useCallback((digit: string) => {
-    if (isSubmitted) return;
+    if (isCountdownActive || isSubmitted) return;
     if (userAnswer.length < 4) { // Límite de 4 dígitos para sumas de 8 números
       setUserAnswer(prev => prev + digit);
     }
-  }, [isSubmitted, userAnswer.length]);
+  }, [isCountdownActive, isSubmitted, userAnswer.length]);
 
   const handleDelete = useCallback(() => {
-    if (isSubmitted) return;
+    if (isCountdownActive || isSubmitted) return;
     setUserAnswer(prev => prev.slice(0, -1));
-  }, [isSubmitted]);
+  }, [isCountdownActive, isSubmitted]);
 
   const handleSubmit = useCallback(() => {
-    if (isSubmitted || !userAnswer) return;
+    if (isCountdownActive || isSubmitted || !userAnswer) return;
 
     setIsSubmitted(true);
+    const responseTimeMs = questionStartTimeRef.current
+      ? performance.now() - questionStartTimeRef.current
+      : 0;
+    const updatedAnswerTimes = [...answerTimesRef.current, responseTimeMs];
+    answerTimesRef.current = updatedAnswerTimes;
+
     const correct = parseInt(userAnswer) === problem.correct;
     setIsCorrect(correct);
+    setCurrentResponseTimeMs(responseTimeMs);
 
     if (correct) {
       setScore((s) => s + 1);
@@ -105,32 +154,45 @@ export default function SumasPage() {
     setTimeout(() => {
       if (questionIndex + 1 >= TOTAL_QUESTIONS) {
         const finalScore = correct ? score + 1 : score;
-        const pct = finalScore / TOTAL_QUESTIONS;
-        setStars(pct >= 0.9 ? 3 : pct >= 0.7 ? 2 : pct >= 0.5 ? 1 : 0);
+        const avgTimeMs = updatedAnswerTimes.reduce((total, time) => total + time, 0) / updatedAnswerTimes.length;
+        const newStars = finalScore < TOTAL_QUESTIONS ? 1 : avgTimeMs > 20000 ? 2 : 3;
+
+        setAverageTimeMs(avgTimeMs);
+        setStars(newStars);
         setFinished(true);
+
+        // Reproducir sonido según las estrellas obtenidas
+        playResultSound(newStars);
       } else {
         setQuestionIndex((i) => i + 1);
         setUserAnswer('');
         setIsSubmitted(false);
         setIsCorrect(null);
+        setCurrentResponseTimeMs(null);
       }
     }, 1500);
-  }, [isSubmitted, userAnswer, problem.correct, questionIndex, score]);
+  }, [isCountdownActive, isSubmitted, userAnswer, problem.correct, questionIndex, score, playResultSound]);
 
   function restart() {
     setQuestionIndex(0);
     setScore(0);
     setStars(0);
+    setAverageTimeMs(0);
     setUserAnswer('');
     setIsSubmitted(false);
     setIsCorrect(null);
     setFinished(false);
+    setCountdownStep(0);
+    setIsCountdownActive(true);
+    setCurrentResponseTimeMs(null);
+    answerTimesRef.current = [];
+    questionStartTimeRef.current = null;
   }
 
   // Finished screen
   if (finished) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-green-800 to-green-950 px-4">
+      <div className="h-screen flex flex-col items-center justify-center gap-6 bg-linear-to-b from-green-800 to-green-950 px-4">
         <h2 className="text-3xl font-bold text-yellow-300">¡Nivel completado!</h2>
         <div className="flex gap-2">
           {[1, 2, 3].map((i) => (
@@ -146,6 +208,9 @@ export default function SumasPage() {
         </div>
         <p className="text-xl text-white">
           {score} / {TOTAL_QUESTIONS} respuestas correctas
+        </p>
+        <p className="text-lg text-slate-100">
+          Tiempo promedio: {formatElapsedTime(averageTimeMs)}
         </p>
         <div className="flex gap-4">
           <button
@@ -168,7 +233,7 @@ export default function SumasPage() {
   return (
     <div className="h-screen flex flex-col bg-linear-to-b from-green-800 to-green-950">
       {/* Top bar - header transparente */}
-      <header className="absolute top-0 left-0 right-0 z-10 flex items-center px-6 py-4 bg-transparent">
+      <header className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-6 py-4 bg-transparent">
         <button
           onClick={() => router.push("/niveles")}
           className="flex items-center gap-2 text-sm font-medium text-white hover:text-yellow-300 transition-colors"
@@ -182,6 +247,16 @@ export default function SumasPage() {
             style={{ height: 'auto' }}
           />
           <span className="text-2xl">Salir</span>
+        </button>
+        
+        {/* Botón de control de audio */}
+        <button
+          onClick={toggleMute}
+          className="bg-black/50 backdrop-blur-sm p-3 rounded-full transition-all duration-200 hover:bg-black/70"
+        >
+          <span className="text-white text-xl">
+            {isMuted ? "🔇" : "🔉"}
+          </span>
         </button>
       </header>
 
@@ -213,7 +288,7 @@ export default function SumasPage() {
                 {problem.sumandos.map((sumando, index) => (
                   <div key={index} className="text-right">
                     <span className="text-5xl text-slate-800 font-bold" style={{ fontFamily: 'monospace' }}>
-                      {sumando}
+                      {isCountdownActive ? '?' : sumando}
                     </span>
                   </div>
                 ))}
@@ -228,7 +303,7 @@ export default function SumasPage() {
               <span className="text-4xl font-bold text-slate-800" style={{ fontFamily: 'monospace' }}>=</span>
               <div className="min-w-24 text-right">
                 <span className="text-4xl font-bold text-slate-800" style={{ fontFamily: 'monospace' }}>
-                  {userAnswer || ' '}
+                  {isCountdownActive ? '?' : userAnswer || ' '}
                 </span>
               </div>
             </div>
@@ -242,9 +317,24 @@ export default function SumasPage() {
           onDigit={handleDigit}
           onDelete={handleDelete}
           onSubmit={handleSubmit}
-          disabled={isSubmitted}
+          disabled={isCountdownActive || isSubmitted}
         />
       </div>
+
+      {isCountdownActive && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/20 backdrop-blur-[1px] pointer-events-none">
+          <div
+            key={COUNTDOWN_STEPS[countdownStep]}
+            className="countdown-burst select-none text-7xl font-black uppercase tracking-[0.2em] text-yellow-300 sm:text-8xl"
+            style={{
+              WebkitTextStroke: '2px rgba(15, 23, 42, 0.85)',
+              textShadow: '0 10px 24px rgba(15, 23, 42, 0.6), 0 0 30px rgba(250, 204, 21, 0.3)',
+            }}
+          >
+            {COUNTDOWN_STEPS[countdownStep]}
+          </div>
+        </div>
+      )}
 
       {/* Feedback */}
       {isCorrect !== null && (
@@ -252,6 +342,11 @@ export default function SumasPage() {
           <p className={`text-xl font-bold text-center ${isCorrect ? "text-emerald-300" : "text-red-300"}`}>
             {isCorrect ? "¡Correcto! 🎉" : `Incorrecto — era ${problem.correct}`}
           </p>
+          {currentResponseTimeMs !== null && (
+            <p className="mt-2 text-center text-sm font-semibold text-white">
+              Tiempo: {formatElapsedTime(currentResponseTimeMs)}
+            </p>
+          )}
         </div>
       )}
     </div>
