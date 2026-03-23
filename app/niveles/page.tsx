@@ -4,6 +4,7 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
+import LevelCarrouselSelector from "../components/LevelCarrouselSelector";
 import { useSound } from "../providers";
 
 const levels = [
@@ -167,89 +168,13 @@ function NivelesPageContent() {
       </button>
 
       {/* Carrusel de nivel seleccionado, ocupa 50vh */}
-      <div className="flex flex-col items-center justify-center w-full pt-0 pb-2 px-2 sm:px-6" style={{ height: '45vh', minHeight: 220 }}>
-        <div className="relative w-full max-w-55 sm:max-w-[320px] md:max-w-xl flex justify-center items-center h-full">
-          {/* Flecha izquierda */}
-          {selectedLevel > 0 && (
-            <button
-              onClick={prevLevel}
-              className="absolute left-0 -translate-x-11/12 md:-translate-x-2/3 z-20 bg-transparent p-2 md:p-3 rounded-full transition-all duration-200 hover:scale-110"
-              aria-label="Nivel anterior"
-            >
-              <Image
-                src="/flecha_izquierda.png"
-                alt="Anterior"
-                width={48}
-                height={48}
-                className="drop-shadow-lg w-10 h-10 md:w-16 md:h-16"
-              />
-            </button>
-          )}
-
-          {/* Niveles */}
-          <div className="relative w-11/12 sm:w-4/5 md:w-2/3 aspect-20/25 max-w-55 sm:max-w-[320px] md:max-w-100 mx-auto h-full lg:mt-12">
-            {levels.map((level, index) => {
-              const isActive = index === selectedLevel;
-              const isNext = index === selectedLevel + 1;
-              const isPrev = index === selectedLevel - 1;
-
-              return (
-                <div
-                  key={level.id}
-                  className={`absolute inset-0 transition-all duration-500 ${
-                    isActive
-                      ? 'opacity-100 scale-100 z-20'
-                      : isNext || isPrev
-                      ? 'opacity-30 scale-75 z-10'
-                      : 'opacity-0 scale-50 z-0'
-                  } ${
-                    isNext ? 'translate-x-8' : isPrev ? '-translate-x-8' : 'translate-x-0'
-                  }`}
-                  style={{ pointerEvents: isActive ? 'auto' : 'none' }}
-                >
-                  <div
-                    className={`h-full w-full ${level.unlocked && !isNavigating ? 'cursor-pointer' : 'cursor-not-allowed'}`}
-                    onClick={() => handleLevelSelect(level.id)}
-                  >
-                    <Image
-                      src={level.image}
-                      alt={level.title}
-                      fill
-                      sizes="(max-width: 600px) 90vw, (max-width: 900px) 60vw, 400px"
-                      className={`object-contain w-full h-full ${level.unlocked ? 'drop-shadow-lg' : 'filter grayscale opacity-70'}`}
-                      priority={isActive}
-                    />
-
-                    {/* Lock overlay */}
-                    {!level.unlocked && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Image src="/candado.png" alt="Bloqueado" width={48} height={72} className="w-18 h-24 md:w-16 md:h-16" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Flecha derecha */}
-          {selectedLevel < levels.length - 1 && (
-            <button
-              onClick={nextLevel}
-              className="absolute right-0 translate-x-11/12 md:translate-x-2/3 z-20 bg-transparent p-2 md:p-3 rounded-full transition-all duration-200 hover:scale-110"
-              aria-label="Nivel siguiente"
-            >
-              <Image
-                src="/flecha_derecha.png"
-                alt="Siguiente"
-                width={48}
-                height={48}
-                className="drop-shadow-lg w-10 h-10 md:w-16 md:h-16"
-              />
-            </button>
-          )}
-        </div>
-      </div>
+      <LevelCarrouselSelector
+        levels={levels}
+        isNavigating={isNavigating}
+        playLevelSound={playLevelSound}
+        setCurrentLevel={setCurrentLevel}
+        onLevelSelect={handleLevelSelect}
+      />
 
       {/* Grilla de desafíos, ocupa el resto */}
       <div className="flex-1 w-full px-2 pb-4 md:p-6 overflow-y-auto flex flex-col items-center" style={{ minHeight: '40vh' }}>
