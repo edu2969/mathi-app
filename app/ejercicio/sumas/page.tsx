@@ -202,36 +202,36 @@ export default function SumasPage() {
   // Finished screen
   if (finished) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-6 bg-linear-to-b from-green-800 to-green-950 px-4">
-        <h2 className="text-3xl font-bold text-yellow-300">¡Nivel completado!</h2>
-        <div className="flex gap-2">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-linear-to-b from-green-800 to-green-950 px-2 sm:px-4 py-6">
+        <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 text-center">¡Nivel completado!</h2>
+        <div className="flex gap-2 justify-center">
           {[1, 2, 3].map((i) => (
             <Image
               key={i}
               src="/estrella.png"
               alt="Estrella"
-              width={48}
-              height={48}
+              width={40}
+              height={40}
               className={i <= stars ? "drop-shadow-md" : "opacity-30 grayscale"}
             />
           ))}
         </div>
-        <p className="text-xl text-white">
+        <p className="text-lg sm:text-xl text-white text-center">
           {score} / {TOTAL_QUESTIONS} respuestas correctas
         </p>
-        <p className="text-lg text-slate-100">
+        <p className="text-base sm:text-lg text-slate-100 text-center">
           Tiempo promedio: {formatElapsedTime(averageTimeMs)}
         </p>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none justify-center">
           <button
             onClick={handleRetry}
-            className="rounded-xl bg-yellow-400 px-6 py-3 font-bold text-green-900 shadow-md transition-colors hover:bg-yellow-300"
+            className="rounded-xl bg-yellow-400 px-4 sm:px-6 py-2 sm:py-3 font-bold text-green-900 shadow-md transition-colors hover:bg-yellow-300 w-full sm:w-auto"
           >
             Reintentar
           </button>
           <button
             onClick={handleBackToLevels}
-            className="rounded-xl border-2 border-yellow-400/60 px-6 py-3 font-bold text-yellow-300 transition-colors hover:bg-green-700"
+            className="rounded-xl border-2 border-yellow-400/60 px-4 sm:px-6 py-2 sm:py-3 font-bold text-yellow-300 transition-colors hover:bg-green-700 w-full sm:w-auto"
           >
             Volver
           </button>
@@ -241,101 +241,92 @@ export default function SumasPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-linear-to-b from-green-800 to-green-950">
+    <div className="min-h-screen flex flex-col bg-linear-to-b from-green-800 to-green-950 relative">
       {/* Top bar - header transparente */}
-      <header className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-6 py-4 bg-transparent">
+      <header className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-2 sm:px-6 py-3 sm:py-4 bg-transparent">
         <button
-          onClick={() => router.push("/niveles")}
-          className="flex items-center gap-2 text-sm font-medium text-white hover:text-yellow-300 transition-colors"
+          onClick={() => router.push('/niveles')}
+          className="flex items-center gap-2 text-xs sm:text-sm font-medium text-white hover:text-yellow-300 transition-colors"
         >
           <Image
             src="/flecha_izquierda.png"
             alt="Volver"
-            width={40}
-            height={40}
-            className="drop-shadow-lg"
+            width={32}
+            height={32}
+            className="drop-shadow-lg w-8 h-8 sm:w-10 sm:h-10"
             style={{ height: 'auto' }}
           />
-          <span className="text-2xl">Salir</span>
+          <span className="text-lg sm:text-2xl">Salir</span>
         </button>
-        
         {/* Botón de control de audio */}
         <button
           onClick={toggleMute}
-          className="bg-black/50 backdrop-blur-sm p-3 rounded-full transition-all duration-200 hover:bg-black/70"
+          className="bg-black/50 backdrop-blur-sm p-2 sm:p-3 rounded-full transition-all duration-200 hover:bg-black/70"
         >
           <span className="text-white text-xl">
-            {isMuted ? "🔇" : "🔉"}
+            {isMuted ? '🔇' : '🔉'}
           </span>
         </button>
       </header>
 
-      {/* Ejercicio - 60% de altura */}
-      <div className="bg-slate-400 w-full flex-3 pt-8">
-        
-        {/* Layout en columnas: 1/5 para ejercicio + 4/5 para sumatoria */}
-        <div className="h-full flex">
-          
-          {/* Columna izquierda: 1/5 - Número del ejercicio */}
-          <div className="w-1/5 flex flex-col justify-start pl-8 pt-16">
-            <div className="flex flex-col items-start">
-              <span className="text-lg text-slate-800 mb-2">EJERCICIO</span>
-              <span className="text-6xl text-slate-800 font-bold" style={{ fontFamily: 'monospace' }}>
+      {/* Ejercicio y teclado */}
+      <main className="flex-1 flex flex-col-reverse md:flex-row w-full pt-24 pb-4 md:pt-8 md:pb-0 gap-2 md:gap-0">
+        {/* Teclado numérico */}
+        <section className="w-full md:w-2/5 flex items-end md:items-center justify-center px-2 md:px-0">
+          <div className="w-full max-w-md">
+            <NumericKeypad
+              onDigit={handleDigit}
+              onDelete={handleDelete}
+              onSubmit={handleSubmit}
+              disabled={isCountdownActive || isSubmitted}
+            />
+          </div>
+        </section>
+
+        {/* Ejercicio */}
+        <section className="w-full md:w-3/5 flex flex-col items-center justify-center px-2 md:px-0">
+          <div className="flex flex-col items-center w-full max-w-lg mx-auto">
+            {/* Número de ejercicio */}
+            <div className="flex flex-row items-center justify-between w-full mb-2">
+              <span className="text-xs sm:text-lg text-slate-200">EJERCICIO</span>
+              <span className="text-3xl sm:text-6xl text-slate-100 font-bold font-mono">
                 {questionIndex + 1}/{TOTAL_QUESTIONS}
               </span>
             </div>
-          </div>
-          
-          {/* Columna derecha: 4/5 - Sumatoria */}
-          <div className="w-4/5 flex flex-col justify-center items-center">
-            
-            {/* Área de suma (signo + y números) */}
-            <div className="flex items-end space-x-4 mb-4">
-              <span className="text-6xl font-bold text-slate-800 pb-8" style={{ fontFamily: 'monospace' }}>+</span>
-              
-              {/* Columna de 8 sumandos */}
-              <div className="flex flex-col space-y-1">
+            {/* Área de suma */}
+            <div className="flex flex-row items-end justify-center gap-2 sm:gap-4 mb-2 sm:mb-4 w-full">
+              <span className="text-4xl sm:text-6xl font-bold text-slate-800 pb-4 sm:pb-8 font-mono">+</span>
+              <div className="flex flex-col space-y-0.5 sm:space-y-1">
                 {problem.sumandos.map((sumando, index) => (
                   <div key={index} className="text-right">
-                    <span className="text-5xl text-slate-800 font-bold" style={{ fontFamily: 'monospace' }}>
+                    <span className="text-2xl sm:text-5xl text-slate-800 font-bold font-mono">
                       {isCountdownActive ? '?' : sumando}
                     </span>
                   </div>
                 ))}
               </div>
             </div>
-            
             {/* Línea horizontal debajo de los sumandos */}
-            <div className="w-32 h-1 bg-slate-800 mb-4 ml-16"></div>
-            
-            {/* Totalizador alineado con la lista de números */}
-            <div className="flex items-center space-x-4 bg-slate-500 px-4 py-3 rounded-lg border-2 border-slate-600 ml-16">
-              <span className="text-4xl font-bold text-slate-800" style={{ fontFamily: 'monospace' }}>=</span>
-              <div className="min-w-24 text-right">
-                <span className="text-4xl font-bold text-slate-800" style={{ fontFamily: 'monospace' }}>
+            <div className="w-20 sm:w-32 h-1 bg-slate-800 mb-2 sm:mb-4 ml-8 sm:ml-16"></div>
+            {/* Totalizador */}
+            <div className="flex items-center space-x-2 sm:space-x-4 bg-slate-500 px-2 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-slate-600 ml-8 sm:ml-16">
+              <span className="text-2xl sm:text-4xl font-bold text-slate-800 font-mono">=</span>
+              <div className="min-w-12 sm:min-w-24 text-right">
+                <span className="text-2xl sm:text-4xl font-bold text-slate-800 font-mono">
                   {isCountdownActive ? '?' : userAnswer || ' '}
                 </span>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
 
-      {/* Teclado - 40% de altura */}
-      <div className="flex-2">
-        <NumericKeypad
-          onDigit={handleDigit}
-          onDelete={handleDelete}
-          onSubmit={handleSubmit}
-          disabled={isCountdownActive || isSubmitted}
-        />
-      </div>
-
+      {/* Countdown overlay */}
       {isCountdownActive && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/20 backdrop-blur-[1px] pointer-events-none">
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/20 backdrop-blur-[1px] pointer-events-none">
           <div
             key={COUNTDOWN_STEPS[countdownStep]}
-            className="countdown-burst select-none text-7xl font-black uppercase tracking-[0.2em] text-yellow-300 sm:text-8xl"
+            className="countdown-burst select-none text-5xl sm:text-7xl font-black uppercase tracking-[0.2em] text-yellow-300"
             style={{
               WebkitTextStroke: '2px rgba(15, 23, 42, 0.85)',
               textShadow: '0 10px 24px rgba(15, 23, 42, 0.6), 0 0 30px rgba(250, 204, 21, 0.3)',
@@ -348,12 +339,12 @@ export default function SumasPage() {
 
       {/* Feedback */}
       {isCorrect !== null && (
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 p-4 rounded-xl ${isCorrect ? 'bg-emerald-500/20 border-emerald-400' : 'bg-red-500/20 border-red-400'} border-2`}>
-          <p className={`text-xl font-bold text-center ${isCorrect ? "text-emerald-300" : "text-red-300"}`}>
-            {isCorrect ? "¡Correcto! 🎉" : `Incorrecto — era ${problem.correct}`}
+        <div className={`absolute top-1/2 left-1/2 z-40 transform -translate-x-1/2 p-4 rounded-xl ${isCorrect ? 'bg-emerald-500/20 border-emerald-400' : 'bg-red-500/20 border-red-400'} border-2 w-11/12 max-w-xs sm:max-w-md`}>
+          <p className={`text-lg sm:text-xl font-bold text-center ${isCorrect ? 'text-emerald-300' : 'text-red-300'}`}>
+            {isCorrect ? '¡Correcto! 🎉' : `Incorrecto — era ${problem.correct}`}
           </p>
           {currentResponseTimeMs !== null && (
-            <p className="mt-2 text-center text-sm font-semibold text-white">
+            <p className="mt-2 text-center text-xs sm:text-sm font-semibold text-white">
               Tiempo: {formatElapsedTime(currentResponseTimeMs)}
             </p>
           )}
