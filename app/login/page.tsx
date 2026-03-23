@@ -1,11 +1,11 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,25 +35,38 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center bg-gradient-to-b from-green-800 to-green-950 px-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white/95 p-8 shadow-2xl">
-        {/* Logo / Brain icon */}
-        <div className="mb-6 flex flex-col items-center gap-3">
+    <div
+      className="flex min-h-screen flex-1 flex-col items-center justify-center bg-cover bg-center bg-no-repeat px-4 py-8"
+      style={{ backgroundImage: "url('/bg-vertical.png')" }}
+    >
+      <div className="mb-6 flex w-full max-w-sm flex-col items-center gap-3">
+        <Image
+          src="/titulo.png"
+          alt="La historia de Mathi"
+          width={572}
+          height={138}
+          className="h-auto w-full max-w-85 drop-shadow-lg"
+          priority
+        />
+      </div>
+
+      <div className="w-full max-w-sm rounded-[28px] border border-white/40 bg-white/78 p-8 shadow-2xl backdrop-blur-[2px]">
+        <div className="mb-6 flex flex-col items-center gap-4">
           <Image
-            src="/level_01.png"
+            src="/logo.png"
             alt="MathiApp"
-            width={120}
-            height={150}
-            className="drop-shadow-lg"
-            priority
+            width={198}
+            height={283}
+            className="h-auto w-30 drop-shadow-lg"
           />
-          <h1 className="text-2xl font-bold text-green-800">MathiApp</h1>
-          <p className="text-sm text-gray-500">Aprende matemáticas jugando</p>
+          <p className="text-center text-sm font-medium text-emerald-950/70">
+            La inteligencia que sostiene al mundo
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-emerald-950">
               Email
             </label>
             <input
@@ -62,13 +75,13 @@ export default function LoginPage() {
               type="email"
               required
               autoComplete="email"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/40"
+              className="w-full rounded-xl border border-emerald-900/15 bg-white/85 px-3 py-2 text-gray-900 placeholder-gray-400 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
               placeholder="tu@email.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-emerald-950">
               Contraseña
             </label>
             <input
@@ -77,28 +90,42 @@ export default function LoginPage() {
               type="password"
               required
               autoComplete="current-password"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/40"
+              className="w-full rounded-xl border border-emerald-900/15 bg-white/85 px-3 py-2 text-gray-900 placeholder-gray-400 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30"
               placeholder="••••••••"
             />
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+            <p className="rounded-xl bg-red-50/95 px-3 py-2 text-sm text-red-600">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 w-full rounded-lg bg-green-700 py-2.5 font-semibold text-white transition-colors hover:bg-green-800 disabled:opacity-60"
+            className="mt-2 w-full rounded-xl bg-emerald-700 py-2.5 font-semibold text-white transition-colors hover:bg-emerald-800 disabled:opacity-60"
           >
             {loading ? "Ingresando…" : "Ingresar"}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-gray-400">
+        <p className="mt-4 text-center text-xs text-emerald-950/55">
           Demo: usa cualquier email con contraseña <strong>1234</strong>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center bg-linear-to-b from-green-800 to-green-950">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-yellow-400 border-t-transparent" />
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

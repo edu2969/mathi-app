@@ -1,9 +1,9 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Image from "next/image";
+import { useSound } from "../../providers";
 
 function generateProblem() {
   // Generar 8 sumandos como en el original (números del 2 al 8)
@@ -16,6 +16,15 @@ function generateProblem() {
 }
 
 const TOTAL_QUESTIONS = 3;
+const COUNTDOWN_STEPS = ["3", "2", "1", "Go!"];
+
+function formatElapsedTime(timeMs: number) {
+  if (timeMs < 1000) {
+    return `${Math.round(timeMs)} ms`;
+  }
+
+  return `${(timeMs / 1000).toFixed(timeMs >= 10000 ? 1 : 2)} s`;
+}
 
 // Componente del teclado numérico (adaptado de EjercicioDojo.tsx)
 function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
@@ -28,11 +37,12 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
   const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, "D", 0, "O"];
 
   return (
-    <div className="flex flex-row flex-wrap justify-center w-full h-full px-4 py-6 bg-slate-600">
+    <div className="flex flex-row flex-wrap justify-center w-full h-full px-2 py-4 bg-[#222] rounded-b-2xl shadow-inner border-t-4 border-black relative">
+      {/* Efecto brillo superior */}
+      <div className="absolute top-0 left-0 w-full h-3 bg-linear-to-b from-white/30 to-transparent rounded-t-2xl pointer-events-none" />
       {keys.map((key, index) => {
         const isDelete = key === "D";
         const isOk = key === "O";
-
         return (
           <button
             key={`tecla_${key}`}
@@ -47,16 +57,20 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
               transition-all duration-200 shadow-lg
               ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
               ${isDelete ?
-                'bg-linear-to-b from-red-400 via-red-500 to-red-600 hover:from-red-300 hover:to-red-500' :
+                'bg-linear-to-b from-red-700 via-red-900 to-black border-b-4 border-red-900' :
                 isOk ?
-                  'bg-linear-to-b from-emerald-500 via-emerald-600 to-slate-700 hover:from-emerald-400 hover:to-emerald-500' :
-                  'bg-linear-to-b from-slate-300 via-slate-400 to-slate-500 hover:from-slate-200 hover:to-slate-400'
+                  'bg-linear-to-b from-emerald-600 via-emerald-800 to-black border-b-4 border-emerald-900' :
+                  'bg-linear-to-b from-black via-gray-900 to-gray-800 border-b-4 border-gray-900'
               }
-              rounded-tl-lg rounded-tr-lg rounded-bl-4xl rounded-br-4xl
+              rounded-xl
+              relative
+              overflow-hidden
             `}
-            style={{ fontFamily: 'monospace' }}
+            style={{ fontFamily: 'monospace', boxShadow: '0 2px 8px #0008' }}
           >
-            {isDelete ? '⌫' : isOk ? '✓' : key}
+            {/* Brillo superior botón */}
+            <span className="absolute top-0 left-0 w-full h-2 bg-linear-to-b from-white/30 to-transparent rounded-t-xl pointer-events-none" />
+            <span className="relative z-10">{isDelete ? '⌫' : isOk ? '✓' : key}</span>
           </button>
         );
       })}
@@ -64,38 +78,78 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
   );
 }
 
-export default function SumasPage() {
-  const { data: session } = useSession();
+function SumasPageContent() {
   const router = useRouter();
+  const { playResultSound, stopAllSounds, isMuted, toggleMute } = useSound();
 
   const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [stars, setStars] = useState(0);
+  const [averageTimeMs, setAverageTimeMs] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [finished, setFinished] = useState(false);
+  const [countdownStep, setCountdownStep] = useState(0);
+  const [isCountdownActive, setIsCountdownActive] = useState(true);
+  const [currentResponseTimeMs, setCurrentResponseTimeMs] = useState<number | null>(null);
+
+  const answerTimesRef = useRef<number[]>([]);
+  const questionStartTimeRef = useRef<number | null>(null);
 
   const problem = useMemo(() => generateProblem(), [questionIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!isCountdownActive) {
+      return;
+    }
+
+    if (countdownStep >= COUNTDOWN_STEPS.length - 1) {
+      const finishTimer = window.setTimeout(() => {
+        setIsCountdownActive(false);
+      }, 900);
+
+      return () => window.clearTimeout(finishTimer);
+    }
+
+    const timer = window.setTimeout(() => {
+      setCountdownStep((previousStep) => previousStep + 1);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [countdownStep, isCountdownActive]);
+
+  useEffect(() => {
+    if (!isCountdownActive && !finished && !isSubmitted) {
+      questionStartTimeRef.current = performance.now();
+    }
+  }, [finished, isCountdownActive, isSubmitted, questionIndex]);
+
   const handleDigit = useCallback((digit: string) => {
-    if (isSubmitted) return;
+    if (isCountdownActive || isSubmitted) return;
     if (userAnswer.length < 4) { // Límite de 4 dígitos para sumas de 8 números
       setUserAnswer(prev => prev + digit);
     }
-  }, [isSubmitted, userAnswer.length]);
+  }, [isCountdownActive, isSubmitted, userAnswer.length]);
 
   const handleDelete = useCallback(() => {
-    if (isSubmitted) return;
+    if (isCountdownActive || isSubmitted) return;
     setUserAnswer(prev => prev.slice(0, -1));
-  }, [isSubmitted]);
+  }, [isCountdownActive, isSubmitted]);
 
   const handleSubmit = useCallback(() => {
-    if (isSubmitted || !userAnswer) return;
+    if (isCountdownActive || isSubmitted || !userAnswer) return;
 
     setIsSubmitted(true);
+    const responseTimeMs = questionStartTimeRef.current
+      ? performance.now() - questionStartTimeRef.current
+      : 0;
+    const updatedAnswerTimes = [...answerTimesRef.current, responseTimeMs];
+    answerTimesRef.current = updatedAnswerTimes;
+
     const correct = parseInt(userAnswer) === problem.correct;
     setIsCorrect(correct);
+    setCurrentResponseTimeMs(responseTimeMs);
 
     if (correct) {
       setScore((s) => s + 1);
@@ -105,155 +159,233 @@ export default function SumasPage() {
     setTimeout(() => {
       if (questionIndex + 1 >= TOTAL_QUESTIONS) {
         const finalScore = correct ? score + 1 : score;
-        const pct = finalScore / TOTAL_QUESTIONS;
-        setStars(pct >= 0.9 ? 3 : pct >= 0.7 ? 2 : pct >= 0.5 ? 1 : 0);
+        const avgTimeMs = updatedAnswerTimes.reduce((total, time) => total + time, 0) / updatedAnswerTimes.length;
+        const newStars = finalScore < TOTAL_QUESTIONS ? 1 : avgTimeMs > 20000 ? 2 : 3;
+
+        setAverageTimeMs(avgTimeMs);
+        setStars(newStars);
         setFinished(true);
+
+        // Reproducir sonido según las estrellas obtenidas
+        playResultSound(newStars);
       } else {
         setQuestionIndex((i) => i + 1);
         setUserAnswer('');
         setIsSubmitted(false);
         setIsCorrect(null);
+        setCurrentResponseTimeMs(null);
       }
     }, 1500);
-  }, [isSubmitted, userAnswer, problem.correct, questionIndex, score]);
+  }, [isCountdownActive, isSubmitted, userAnswer, problem.correct, questionIndex, score, playResultSound]);
 
   function restart() {
     setQuestionIndex(0);
     setScore(0);
     setStars(0);
+    setAverageTimeMs(0);
     setUserAnswer('');
     setIsSubmitted(false);
     setIsCorrect(null);
     setFinished(false);
+    setCountdownStep(0);
+    setIsCountdownActive(true);
+    setCurrentResponseTimeMs(null);
+    answerTimesRef.current = [];
+    questionStartTimeRef.current = null;
   }
+
+  const handleRetry = useCallback(() => {
+    stopAllSounds();
+    restart();
+  }, [stopAllSounds]);
+
+  const handleBackToLevels = useCallback(() => {
+    stopAllSounds();
+    router.push("/niveles");
+  }, [router, stopAllSounds]);
 
   // Finished screen
   if (finished) {
+    // Seleccionar fondo según estrellas
+    let bgImg = "/result_bg-1.png";
+    if (stars === 2) bgImg = "/result_bg-2.png";
+    if (stars === 3) bgImg = "/result_bg-3.png";
+
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-green-800 to-green-950 px-4">
-        <h2 className="text-3xl font-bold text-yellow-300">¡Nivel completado!</h2>
-        <div className="flex gap-2">
-          {[1, 2, 3].map((i) => (
-            <Image
-              key={i}
-              src="/estrella.png"
-              alt="Estrella"
-              width={48}
-              height={48}
-              className={i <= stars ? "drop-shadow-md" : "opacity-30 grayscale"}
-            />
-          ))}
-        </div>
-        <p className="text-xl text-white">
-          {score} / {TOTAL_QUESTIONS} respuestas correctas
-        </p>
-        <div className="flex gap-4">
-          <button
-            onClick={restart}
-            className="rounded-xl bg-yellow-400 px-6 py-3 font-bold text-green-900 shadow-md transition-colors hover:bg-yellow-300"
-          >
-            Reintentar
-          </button>
-          <button
-            onClick={() => router.push("/niveles")}
-            className="rounded-xl border-2 border-yellow-400/60 px-6 py-3 font-bold text-yellow-300 transition-colors hover:bg-green-700"
-          >
-            Volver
-          </button>
+      <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden">
+        {/* Fondo con overlay oscuro */}
+        <Image
+          src={bgImg}
+          alt="Fondo resultado"
+          fill
+          priority
+          className="object-cover z-0"
+          style={{ filter: 'brightness(0.45)' }}
+        />
+        {/* Overlay negro semitransparente extra */}
+        <div className="absolute inset-0 bg-black/10 z-10" />
+        {/* Contenido */}
+        <div className="relative z-20 flex flex-col items-center justify-center gap-6 px-2 sm:px-4 py-6 w-full">
+          <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 text-center drop-shadow-lg">¡Nivel completado!</h2>
+          <div className="flex gap-2 justify-center">
+            {[1, 2, 3].map((i) => (
+              <Image
+                key={i}
+                src="/estrella.png"
+                alt="Estrella"
+                width={40}
+                height={40}
+                className={i <= stars ? "drop-shadow-md" : "opacity-30 grayscale"}
+              />
+            ))}
+          </div>
+          <p className="text-lg sm:text-xl text-white text-center drop-shadow">{score} / {TOTAL_QUESTIONS} respuestas correctas</p>
+          <p className="text-base sm:text-lg text-slate-100 text-center drop-shadow">Tiempo promedio: {formatElapsedTime(averageTimeMs)}</p>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none justify-center">
+            <button
+              onClick={handleRetry}
+              className="rounded-xl bg-yellow-400 px-4 sm:px-6 py-2 sm:py-3 font-bold text-green-900 shadow-md transition-colors hover:bg-yellow-300 w-full sm:w-auto"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={handleBackToLevels}
+              className="rounded-xl border-2 border-yellow-400/60 px-4 sm:px-6 py-2 sm:py-3 font-bold text-yellow-300 transition-colors hover:bg-green-700 w-full sm:w-auto"
+            >
+              Volver
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-linear-to-b from-green-800 to-green-950">
+    <div className="min-h-screen flex flex-col bg-[#b6d7a8] relative">
       {/* Top bar - header transparente */}
-      <header className="absolute top-0 left-0 right-0 z-10 flex items-center px-6 py-4 bg-transparent">
+      <header className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-2 sm:px-6 py-3 sm:py-4 bg-transparent">
         <button
-          onClick={() => router.push("/niveles")}
-          className="flex items-center gap-2 text-sm font-medium text-white hover:text-yellow-300 transition-colors"
+          onClick={() => router.push('/niveles')}
+          className="flex items-center gap-2 text-xs sm:text-sm font-medium text-white hover:text-yellow-300 transition-colors"
         >
           <Image
             src="/flecha_izquierda.png"
             alt="Volver"
-            width={40}
-            height={40}
-            className="drop-shadow-lg"
+            width={32}
+            height={32}
+            className="drop-shadow-lg w-8 h-8 sm:w-10 sm:h-10"
             style={{ height: 'auto' }}
           />
-          <span className="text-2xl">Salir</span>
+          <span className="text-lg sm:text-2xl">Salir</span>
+        </button>
+        {/* Botón de control de audio */}
+        <button
+          onClick={toggleMute}
+          className="bg-black/50 backdrop-blur-sm p-2 sm:p-3 rounded-full transition-all duration-200 hover:bg-black/70"
+        >
+          <span className="text-white text-xl">
+            {isMuted ? '🔇' : '🔉'}
+          </span>
         </button>
       </header>
 
-      {/* Ejercicio - 60% de altura */}
-      <div className="bg-slate-400 w-full flex-3 pt-8">
-        
-        {/* Layout en columnas: 1/5 para ejercicio + 4/5 para sumatoria */}
-        <div className="h-full flex">
-          
-          {/* Columna izquierda: 1/5 - Número del ejercicio */}
-          <div className="w-1/5 flex flex-col justify-start pl-8 pt-16">
-            <div className="flex flex-col items-start">
-              <span className="text-lg text-slate-800 mb-2">EJERCICIO</span>
-              <span className="text-6xl text-slate-800 font-bold" style={{ fontFamily: 'monospace' }}>
+      {/* Ejercicio y teclado */}
+      <main className="flex-1 flex flex-col-reverse md:flex-row w-full pt-24 pb-0 md:pt-8 md:pb-0 gap-2 md:gap-0">
+        {/* Teclado numérico */}
+        <section className="w-full md:w-2/5 flex items-end md:items-center justify-center px-0 md:px-0 pb-2 md:pb-0">
+          <div className="w-full max-w-md px-0 md:px-4">
+            <NumericKeypad
+              onDigit={handleDigit}
+              onDelete={handleDelete}
+              onSubmit={handleSubmit}
+              disabled={isCountdownActive || isSubmitted}
+            />
+          </div>
+        </section>
+
+        {/* Ejercicio */}
+        <section className="w-full md:w-3/5 flex flex-col items-center justify-center px-2 md:px-0">
+          <div className="flex flex-row items-start w-full max-w-lg mx-auto mb-2">
+            {/* Número de ejercicio vertical */}
+            <div className="flex flex-col items-start justify-start mr-4 min-w-17.5">
+              <span className="text-xs sm:text-lg text-slate-700 mb-1">EJERCICIO</span>
+              <span className="text-5xl sm:text-6xl text-black font-bold font-mono leading-none">
                 {questionIndex + 1}/{TOTAL_QUESTIONS}
               </span>
             </div>
+            {/* Área de suma */}
+            <div className="flex flex-col items-center flex-1">
+              <div className="flex flex-row items-end justify-center gap-2 sm:gap-4 mb-2 sm:mb-4 w-full">
+                <span className="text-4xl sm:text-6xl font-bold text-black pb-4 sm:pb-8 font-mono">+</span>
+                <div className="flex flex-col space-y-0.5 sm:space-y-1">
+                  {problem.sumandos.map((sumando, index) => (
+                    <div key={index} className="text-right">
+                      <span className="text-2xl sm:text-5xl text-black font-bold font-mono">
+                        {isCountdownActive ? '?' : sumando}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Línea horizontal debajo de los sumandos */}
+              <div className="w-20 sm:w-32 h-1 bg-black mb-2 sm:mb-4 ml-8 sm:ml-16"></div>
+              {/* Totalizador estilo display calculadora */}
+              <div className="flex items-center space-x-2 sm:space-x-4 bg-linear-to-b from-[#e0e0e0] to-[#b6b6b6] px-4 py-3 rounded-lg border-2 border-black ml-8 sm:ml-16 shadow-inner min-w-30">
+                <span className="text-2xl sm:text-4xl font-bold text-black font-mono">=</span>
+                <div className="min-w-12 sm:min-w-24 text-right">
+                  <span className="text-2xl sm:text-4xl font-bold text-black font-mono">
+                    {isCountdownActive ? '?' : userAnswer || ' '}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-          
-          {/* Columna derecha: 4/5 - Sumatoria */}
-          <div className="w-4/5 flex flex-col justify-center items-center">
-            
-            {/* Área de suma (signo + y números) */}
-            <div className="flex items-end space-x-4 mb-4">
-              <span className="text-6xl font-bold text-slate-800 pb-8" style={{ fontFamily: 'monospace' }}>+</span>
-              
-              {/* Columna de 8 sumandos */}
-              <div className="flex flex-col space-y-1">
-                {problem.sumandos.map((sumando, index) => (
-                  <div key={index} className="text-right">
-                    <span className="text-5xl text-slate-800 font-bold" style={{ fontFamily: 'monospace' }}>
-                      {sumando}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Línea horizontal debajo de los sumandos */}
-            <div className="w-32 h-1 bg-slate-800 mb-4 ml-16"></div>
-            
-            {/* Totalizador alineado con la lista de números */}
-            <div className="flex items-center space-x-4 bg-slate-500 px-4 py-3 rounded-lg border-2 border-slate-600 ml-16">
-              <span className="text-4xl font-bold text-slate-800" style={{ fontFamily: 'monospace' }}>=</span>
-              <div className="min-w-24 text-right">
-                <span className="text-4xl font-bold text-slate-800" style={{ fontFamily: 'monospace' }}>
-                  {userAnswer || ' '}
-                </span>
-              </div>
-            </div>
+        </section>
+      </main>
+
+      {/* Countdown overlay */}
+      {isCountdownActive && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/20 backdrop-blur-[1px] pointer-events-none">
+          <div
+            key={COUNTDOWN_STEPS[countdownStep]}
+            className="countdown-burst select-none text-5xl sm:text-7xl font-black uppercase tracking-[0.2em] text-yellow-300"
+            style={{
+              WebkitTextStroke: '2px rgba(15, 23, 42, 0.85)',
+              textShadow: '0 10px 24px rgba(15, 23, 42, 0.6), 0 0 30px rgba(250, 204, 21, 0.3)',
+            }}
+          >
+            {COUNTDOWN_STEPS[countdownStep]}
           </div>
         </div>
-      </div>
-
-      {/* Teclado - 40% de altura */}
-      <div className="flex-2">
-        <NumericKeypad
-          onDigit={handleDigit}
-          onDelete={handleDelete}
-          onSubmit={handleSubmit}
-          disabled={isSubmitted}
-        />
-      </div>
+      )}
 
       {/* Feedback */}
       {isCorrect !== null && (
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 p-4 rounded-xl ${isCorrect ? 'bg-emerald-500/20 border-emerald-400' : 'bg-red-500/20 border-red-400'} border-2`}>
-          <p className={`text-xl font-bold text-center ${isCorrect ? "text-emerald-300" : "text-red-300"}`}>
-            {isCorrect ? "¡Correcto! 🎉" : `Incorrecto — era ${problem.correct}`}
+        <div className={`absolute top-1/2 left-1/2 z-40 transform -translate-x-1/2 p-4 rounded-xl ${isCorrect ? 'bg-emerald-500/20 border-emerald-400' : 'bg-red-500/20 border-red-400'} border-2 w-11/12 max-w-xs sm:max-w-md`}>
+          <p className={`text-lg sm:text-xl font-bold text-center ${isCorrect ? 'text-emerald-300' : 'text-red-300'}`}>
+            {isCorrect ? '¡Correcto! 🎉' : `Incorrecto — era ${problem.correct}`}
           </p>
+          {currentResponseTimeMs !== null && (
+            <p className="mt-2 text-center text-xs sm:text-sm font-semibold text-white">
+              Tiempo: {formatElapsedTime(currentResponseTimeMs)}
+            </p>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+export default function SumasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center bg-[#b6d7a8]">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-yellow-400 border-t-transparent" />
+        </div>
+      }
+    >
+      <SumasPageContent />
+    </Suspense>
   );
 }
