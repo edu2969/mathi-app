@@ -39,7 +39,7 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
   return (
     <div className="flex flex-row flex-wrap justify-center w-full h-full px-2 py-4 bg-[#222] rounded-b-2xl shadow-inner border-t-4 border-black relative">
       {/* Efecto brillo superior */}
-      <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-b from-white/30 to-transparent rounded-t-2xl pointer-events-none" />
+      <div className="absolute top-0 left-0 w-full h-3 bg-linear-to-b from-white/30 to-transparent rounded-t-2xl pointer-events-none" />
       {keys.map((key, index) => {
         const isDelete = key === "D";
         const isOk = key === "O";
@@ -57,10 +57,10 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
               transition-all duration-200 shadow-lg
               ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
               ${isDelete ?
-                'bg-gradient-to-b from-red-700 via-red-900 to-black border-b-4 border-red-900' :
+                'bg-linear-to-b from-red-700 via-red-900 to-black border-b-4 border-red-900' :
                 isOk ?
-                  'bg-gradient-to-b from-emerald-600 via-emerald-800 to-black border-b-4 border-emerald-900' :
-                  'bg-gradient-to-b from-black via-gray-900 to-gray-800 border-b-4 border-gray-900'
+                  'bg-linear-to-b from-emerald-600 via-emerald-800 to-black border-b-4 border-emerald-900' :
+                  'bg-linear-to-b from-black via-gray-900 to-gray-800 border-b-4 border-gray-900'
               }
               rounded-xl
               relative
@@ -69,7 +69,7 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
             style={{ fontFamily: 'monospace', boxShadow: '0 2px 8px #0008' }}
           >
             {/* Brillo superior botón */}
-            <span className="absolute top-0 left-0 w-full h-2 bg-gradient-to-b from-white/30 to-transparent rounded-t-xl pointer-events-none" />
+            <span className="absolute top-0 left-0 w-full h-2 bg-linear-to-b from-white/30 to-transparent rounded-t-xl pointer-events-none" />
             <span className="relative z-10">{isDelete ? '⌫' : isOk ? '✓' : key}</span>
           </button>
         );
@@ -206,40 +206,55 @@ export default function SumasPage() {
 
   // Finished screen
   if (finished) {
+    // Seleccionar fondo según estrellas
+    let bgImg = "/result_bg-1.png";
+    if (stars === 2) bgImg = "/result_bg-2.png";
+    if (stars === 3) bgImg = "/result_bg-3.png";
+
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-linear-to-b from-green-800 to-green-950 px-2 sm:px-4 py-6">
-        <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 text-center">¡Nivel completado!</h2>
-        <div className="flex gap-2 justify-center">
-          {[1, 2, 3].map((i) => (
-            <Image
-              key={i}
-              src="/estrella.png"
-              alt="Estrella"
-              width={40}
-              height={40}
-              className={i <= stars ? "drop-shadow-md" : "opacity-30 grayscale"}
-            />
-          ))}
-        </div>
-        <p className="text-lg sm:text-xl text-white text-center">
-          {score} / {TOTAL_QUESTIONS} respuestas correctas
-        </p>
-        <p className="text-base sm:text-lg text-slate-100 text-center">
-          Tiempo promedio: {formatElapsedTime(averageTimeMs)}
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none justify-center">
-          <button
-            onClick={handleRetry}
-            className="rounded-xl bg-yellow-400 px-4 sm:px-6 py-2 sm:py-3 font-bold text-green-900 shadow-md transition-colors hover:bg-yellow-300 w-full sm:w-auto"
-          >
-            Reintentar
-          </button>
-          <button
-            onClick={handleBackToLevels}
-            className="rounded-xl border-2 border-yellow-400/60 px-4 sm:px-6 py-2 sm:py-3 font-bold text-yellow-300 transition-colors hover:bg-green-700 w-full sm:w-auto"
-          >
-            Volver
-          </button>
+      <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden">
+        {/* Fondo con overlay oscuro */}
+        <Image
+          src={bgImg}
+          alt="Fondo resultado"
+          fill
+          priority
+          className="object-cover z-0"
+          style={{ filter: 'brightness(0.45)' }}
+        />
+        {/* Overlay negro semitransparente extra */}
+        <div className="absolute inset-0 bg-black/10 z-10" />
+        {/* Contenido */}
+        <div className="relative z-20 flex flex-col items-center justify-center gap-6 px-2 sm:px-4 py-6 w-full">
+          <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 text-center drop-shadow-lg">¡Nivel completado!</h2>
+          <div className="flex gap-2 justify-center">
+            {[1, 2, 3].map((i) => (
+              <Image
+                key={i}
+                src="/estrella.png"
+                alt="Estrella"
+                width={40}
+                height={40}
+                className={i <= stars ? "drop-shadow-md" : "opacity-30 grayscale"}
+              />
+            ))}
+          </div>
+          <p className="text-lg sm:text-xl text-white text-center drop-shadow">{score} / {TOTAL_QUESTIONS} respuestas correctas</p>
+          <p className="text-base sm:text-lg text-slate-100 text-center drop-shadow">Tiempo promedio: {formatElapsedTime(averageTimeMs)}</p>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none justify-center">
+            <button
+              onClick={handleRetry}
+              className="rounded-xl bg-yellow-400 px-4 sm:px-6 py-2 sm:py-3 font-bold text-green-900 shadow-md transition-colors hover:bg-yellow-300 w-full sm:w-auto"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={handleBackToLevels}
+              className="rounded-xl border-2 border-yellow-400/60 px-4 sm:px-6 py-2 sm:py-3 font-bold text-yellow-300 transition-colors hover:bg-green-700 w-full sm:w-auto"
+            >
+              Volver
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -292,7 +307,7 @@ export default function SumasPage() {
         <section className="w-full md:w-3/5 flex flex-col items-center justify-center px-2 md:px-0">
           <div className="flex flex-row items-start w-full max-w-lg mx-auto mb-2">
             {/* Número de ejercicio vertical */}
-            <div className="flex flex-col items-start justify-start mr-4 min-w-[70px]">
+            <div className="flex flex-col items-start justify-start mr-4 min-w-17.5">
               <span className="text-xs sm:text-lg text-slate-700 mb-1">EJERCICIO</span>
               <span className="text-5xl sm:text-6xl text-black font-bold font-mono leading-none">
                 {questionIndex + 1}/{TOTAL_QUESTIONS}
@@ -315,7 +330,7 @@ export default function SumasPage() {
               {/* Línea horizontal debajo de los sumandos */}
               <div className="w-20 sm:w-32 h-1 bg-black mb-2 sm:mb-4 ml-8 sm:ml-16"></div>
               {/* Totalizador estilo display calculadora */}
-              <div className="flex items-center space-x-2 sm:space-x-4 bg-gradient-to-b from-[#e0e0e0] to-[#b6b6b6] px-4 py-3 rounded-lg border-2 border-black ml-8 sm:ml-16 shadow-inner min-w-[120px]">
+              <div className="flex items-center space-x-2 sm:space-x-4 bg-linear-to-b from-[#e0e0e0] to-[#b6b6b6] px-4 py-3 rounded-lg border-2 border-black ml-8 sm:ml-16 shadow-inner min-w-30">
                 <span className="text-2xl sm:text-4xl font-bold text-black font-mono">=</span>
                 <div className="min-w-12 sm:min-w-24 text-right">
                   <span className="text-2xl sm:text-4xl font-bold text-black font-mono">
