@@ -167,13 +167,13 @@ export default function NivelesPage() {
       </button>
 
       {/* Carrusel de nivel seleccionado, ocupa 50vh */}
-      <div className="flex flex-col items-center justify-center w-full pt-6 pb-2 px-2 sm:px-6" style={{ height: '50vh', minHeight: 260 }}>
-        <div className="relative w-full max-w-xl flex justify-center items-center h-full">
+      <div className="flex flex-col items-center justify-center w-full pt-0 pb-2 px-2 sm:px-6" style={{ height: '45vh', minHeight: 220 }}>
+        <div className="relative w-full max-w-55 sm:max-w-[320px] md:max-w-xl flex justify-center items-center h-full">
           {/* Flecha izquierda */}
           {selectedLevel > 0 && (
             <button
               onClick={prevLevel}
-              className="absolute left-0 md:-left-5 z-20 bg-transparent p-2 md:p-3 rounded-full transition-all duration-200 hover:scale-110"
+              className="absolute left-0 -translate-x-11/12 md:-translate-x-2/3 z-20 bg-transparent p-2 md:p-3 rounded-full transition-all duration-200 hover:scale-110"
               aria-label="Nivel anterior"
             >
               <Image
@@ -187,7 +187,7 @@ export default function NivelesPage() {
           )}
 
           {/* Niveles */}
-          <div className="relative w-11/12 sm:w-4/5 md:w-2/3 aspect-[20/25] max-w-[400px] mx-auto h-full">
+          <div className="relative w-11/12 sm:w-4/5 md:w-2/3 aspect-20/25 max-w-55 sm:max-w-[320px] md:max-w-100 mx-auto h-full">
             {levels.map((level, index) => {
               const isActive = index === selectedLevel;
               const isNext = index === selectedLevel + 1;
@@ -236,7 +236,7 @@ export default function NivelesPage() {
           {selectedLevel < levels.length - 1 && (
             <button
               onClick={nextLevel}
-              className="absolute right-0 md:-right-5 z-20 bg-transparent p-2 md:p-3 rounded-full transition-all duration-200 hover:scale-110"
+              className="absolute right-0 translate-x-11/12 md:translate-x-2/3 z-20 bg-transparent p-2 md:p-3 rounded-full transition-all duration-200 hover:scale-110"
               aria-label="Nivel siguiente"
             >
               <Image
@@ -252,10 +252,10 @@ export default function NivelesPage() {
       </div>
 
       {/* Grilla de desafíos, ocupa el resto */}
-      <div className="flex-1 w-full bg-black/20 px-2 py-4 md:p-6 overflow-y-auto flex flex-col items-center" style={{ minHeight: '40vh' }}>
-        <div className="w-full max-w-2xl grid grid-cols-3 grid-rows-3 gap-2 md:gap-4 place-items-center h-full">
+      <div className="flex-1 w-full px-2 py-4 md:p-6 overflow-y-auto flex flex-col items-center" style={{ minHeight: '40vh' }}>
+        <div className="w-full max-w-2xl grid grid-cols-3 grid-rows-3 gap-2 md:gap-4 h-full justify-items-center">
           {challenges.map((challenge, index) => {
-            // Para la última fila (ítems 6 y 7), centrarlos en 3-3-2
+            // Para la última fila (ítems 6 y 7), centrarlos en 3-3-2 y siempre al centro
             let extraGrid = '';
             if (index === 6) extraGrid = 'col-span-1 col-start-2';
             if (index === 7) extraGrid = 'col-span-1 col-start-3';
@@ -263,7 +263,7 @@ export default function NivelesPage() {
               <div
                 key={challenge.id}
                 onClick={() => handleChallengeSelect(challenge.id)}
-                className={`relative aspect-[120/147] w-10/12 sm:w-9/12 md:w-8/12 max-w-[120px] transition-all duration-200 overflow-hidden rounded-2xl shadow-md ${
+                className={`relative aspect-120/147 w-10/12 sm:w-9/12 md:w-8/12 max-w-55 transition-all duration-200 overflow-hidden rounded-2xl shadow-md ${
                   challenge.unlocked && !isNavigating ? "cursor-pointer hover:scale-105" : "opacity-60"
                 } ${extraGrid}`}
               >
@@ -283,7 +283,7 @@ export default function NivelesPage() {
 
                 {/* Estrellas en la parte inferior */}
                 {challenge.stars > 0 && (
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1 -ml-2">
                     {Array.from({ length: challenge.stars }, (_, starIndex) => (
                       <Image
                         key={starIndex}

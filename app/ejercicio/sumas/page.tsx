@@ -37,11 +37,12 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
   const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, "D", 0, "O"];
 
   return (
-    <div className="flex flex-row flex-wrap justify-center w-full h-full px-4 py-6 bg-slate-600">
+    <div className="flex flex-row flex-wrap justify-center w-full h-full px-2 py-4 bg-[#222] rounded-b-2xl shadow-inner border-t-4 border-black relative">
+      {/* Efecto brillo superior */}
+      <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-b from-white/30 to-transparent rounded-t-2xl pointer-events-none" />
       {keys.map((key, index) => {
         const isDelete = key === "D";
         const isOk = key === "O";
-
         return (
           <button
             key={`tecla_${key}`}
@@ -56,16 +57,20 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
               transition-all duration-200 shadow-lg
               ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
               ${isDelete ?
-                'bg-linear-to-b from-red-400 via-red-500 to-red-600 hover:from-red-300 hover:to-red-500' :
+                'bg-gradient-to-b from-red-700 via-red-900 to-black border-b-4 border-red-900' :
                 isOk ?
-                  'bg-linear-to-b from-emerald-500 via-emerald-600 to-slate-700 hover:from-emerald-400 hover:to-emerald-500' :
-                  'bg-linear-to-b from-slate-300 via-slate-400 to-slate-500 hover:from-slate-200 hover:to-slate-400'
+                  'bg-gradient-to-b from-emerald-600 via-emerald-800 to-black border-b-4 border-emerald-900' :
+                  'bg-gradient-to-b from-black via-gray-900 to-gray-800 border-b-4 border-gray-900'
               }
-              rounded-tl-lg rounded-tr-lg rounded-bl-4xl rounded-br-4xl
+              rounded-xl
+              relative
+              overflow-hidden
             `}
-            style={{ fontFamily: 'monospace' }}
+            style={{ fontFamily: 'monospace', boxShadow: '0 2px 8px #0008' }}
           >
-            {isDelete ? '⌫' : isOk ? '✓' : key}
+            {/* Brillo superior botón */}
+            <span className="absolute top-0 left-0 w-full h-2 bg-gradient-to-b from-white/30 to-transparent rounded-t-xl pointer-events-none" />
+            <span className="relative z-10">{isDelete ? '⌫' : isOk ? '✓' : key}</span>
           </button>
         );
       })}
@@ -241,7 +246,7 @@ export default function SumasPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-linear-to-b from-green-800 to-green-950 relative">
+    <div className="min-h-screen flex flex-col bg-[#b6d7a8] relative">
       {/* Top bar - header transparente */}
       <header className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-2 sm:px-6 py-3 sm:py-4 bg-transparent">
         <button
@@ -270,10 +275,10 @@ export default function SumasPage() {
       </header>
 
       {/* Ejercicio y teclado */}
-      <main className="flex-1 flex flex-col-reverse md:flex-row w-full pt-24 pb-4 md:pt-8 md:pb-0 gap-2 md:gap-0">
+      <main className="flex-1 flex flex-col-reverse md:flex-row w-full pt-24 pb-0 md:pt-8 md:pb-0 gap-2 md:gap-0">
         {/* Teclado numérico */}
-        <section className="w-full md:w-2/5 flex items-end md:items-center justify-center px-2 md:px-0">
-          <div className="w-full max-w-md">
+        <section className="w-full md:w-2/5 flex items-end md:items-center justify-center px-0 md:px-0 pb-2 md:pb-0">
+          <div className="w-full max-w-md px-0 md:px-4">
             <NumericKeypad
               onDigit={handleDigit}
               onDelete={handleDelete}
@@ -285,36 +290,38 @@ export default function SumasPage() {
 
         {/* Ejercicio */}
         <section className="w-full md:w-3/5 flex flex-col items-center justify-center px-2 md:px-0">
-          <div className="flex flex-col items-center w-full max-w-lg mx-auto">
-            {/* Número de ejercicio */}
-            <div className="flex flex-row items-center justify-between w-full mb-2">
-              <span className="text-xs sm:text-lg text-slate-200">EJERCICIO</span>
-              <span className="text-3xl sm:text-6xl text-slate-100 font-bold font-mono">
+          <div className="flex flex-row items-start w-full max-w-lg mx-auto mb-2">
+            {/* Número de ejercicio vertical */}
+            <div className="flex flex-col items-start justify-start mr-4 min-w-[70px]">
+              <span className="text-xs sm:text-lg text-slate-700 mb-1">EJERCICIO</span>
+              <span className="text-5xl sm:text-6xl text-black font-bold font-mono leading-none">
                 {questionIndex + 1}/{TOTAL_QUESTIONS}
               </span>
             </div>
             {/* Área de suma */}
-            <div className="flex flex-row items-end justify-center gap-2 sm:gap-4 mb-2 sm:mb-4 w-full">
-              <span className="text-4xl sm:text-6xl font-bold text-slate-800 pb-4 sm:pb-8 font-mono">+</span>
-              <div className="flex flex-col space-y-0.5 sm:space-y-1">
-                {problem.sumandos.map((sumando, index) => (
-                  <div key={index} className="text-right">
-                    <span className="text-2xl sm:text-5xl text-slate-800 font-bold font-mono">
-                      {isCountdownActive ? '?' : sumando}
-                    </span>
-                  </div>
-                ))}
+            <div className="flex flex-col items-center flex-1">
+              <div className="flex flex-row items-end justify-center gap-2 sm:gap-4 mb-2 sm:mb-4 w-full">
+                <span className="text-4xl sm:text-6xl font-bold text-black pb-4 sm:pb-8 font-mono">+</span>
+                <div className="flex flex-col space-y-0.5 sm:space-y-1">
+                  {problem.sumandos.map((sumando, index) => (
+                    <div key={index} className="text-right">
+                      <span className="text-2xl sm:text-5xl text-black font-bold font-mono">
+                        {isCountdownActive ? '?' : sumando}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-            {/* Línea horizontal debajo de los sumandos */}
-            <div className="w-20 sm:w-32 h-1 bg-slate-800 mb-2 sm:mb-4 ml-8 sm:ml-16"></div>
-            {/* Totalizador */}
-            <div className="flex items-center space-x-2 sm:space-x-4 bg-slate-500 px-2 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-slate-600 ml-8 sm:ml-16">
-              <span className="text-2xl sm:text-4xl font-bold text-slate-800 font-mono">=</span>
-              <div className="min-w-12 sm:min-w-24 text-right">
-                <span className="text-2xl sm:text-4xl font-bold text-slate-800 font-mono">
-                  {isCountdownActive ? '?' : userAnswer || ' '}
-                </span>
+              {/* Línea horizontal debajo de los sumandos */}
+              <div className="w-20 sm:w-32 h-1 bg-black mb-2 sm:mb-4 ml-8 sm:ml-16"></div>
+              {/* Totalizador estilo display calculadora */}
+              <div className="flex items-center space-x-2 sm:space-x-4 bg-gradient-to-b from-[#e0e0e0] to-[#b6b6b6] px-4 py-3 rounded-lg border-2 border-black ml-8 sm:ml-16 shadow-inner min-w-[120px]">
+                <span className="text-2xl sm:text-4xl font-bold text-black font-mono">=</span>
+                <div className="min-w-12 sm:min-w-24 text-right">
+                  <span className="text-2xl sm:text-4xl font-bold text-black font-mono">
+                    {isCountdownActive ? '?' : userAnswer || ' '}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
