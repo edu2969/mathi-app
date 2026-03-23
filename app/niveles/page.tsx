@@ -1,5 +1,6 @@
 "use client";
 
+import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -72,6 +73,7 @@ export default function NivelesPage() {
   const router = useRouter();
   const [selectedLevel, setSelectedLevel] = useState(0); // Índice del nivel seleccionado en carrusel
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const {
     fadeOutLevelSound,
     isMuted,
@@ -111,6 +113,21 @@ export default function NivelesPage() {
       await fadeOutLevelSound();
     } finally {
       router.push("/ejercicio/sumas");
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (isNavigating || isSigningOut) {
+      return;
+    }
+
+    setIsSigningOut(true);
+
+    try {
+      await fadeOutLevelSound();
+      await signOut({ callbackUrl: "/login" });
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
@@ -276,6 +293,18 @@ export default function NivelesPage() {
           ))}
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          void handleSignOut();
+        }}
+        disabled={isSigningOut}
+        className="absolute right-4 bottom-4 z-30 flex flex-col items-center rounded-2xl bg-black/45 px-3 py-2 text-white backdrop-blur-sm transition-all duration-200 hover:bg-black/65 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        <span className="text-3xl leading-none">⏻</span>
+        <span className="text-[10px] font-medium uppercase tracking-[0.2em]">Salir</span>
+      </button>
     </div>
   );
 }

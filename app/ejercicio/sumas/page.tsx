@@ -75,7 +75,7 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
 
 export default function SumasPage() {
   const router = useRouter();
-  const { playResultSound, isMuted, toggleMute } = useSound();
+  const { playResultSound, stopAllSounds, isMuted, toggleMute } = useSound();
 
   const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -189,6 +189,16 @@ export default function SumasPage() {
     questionStartTimeRef.current = null;
   }
 
+  const handleRetry = useCallback(() => {
+    stopAllSounds();
+    restart();
+  }, [stopAllSounds]);
+
+  const handleBackToLevels = useCallback(() => {
+    stopAllSounds();
+    router.push("/niveles");
+  }, [router, stopAllSounds]);
+
   // Finished screen
   if (finished) {
     return (
@@ -214,13 +224,13 @@ export default function SumasPage() {
         </p>
         <div className="flex gap-4">
           <button
-            onClick={restart}
+            onClick={handleRetry}
             className="rounded-xl bg-yellow-400 px-6 py-3 font-bold text-green-900 shadow-md transition-colors hover:bg-yellow-300"
           >
             Reintentar
           </button>
           <button
-            onClick={() => router.push("/niveles")}
+            onClick={handleBackToLevels}
             className="rounded-xl border-2 border-yellow-400/60 px-6 py-3 font-bold text-yellow-300 transition-colors hover:bg-green-700"
           >
             Volver
