@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Image from "next/image";
 import { useSound } from "../../providers";
 
@@ -78,7 +78,7 @@ function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
   );
 }
 
-export default function SumasPage() {
+function SumasPageContent() {
   const router = useRouter();
   const { playResultSound, stopAllSounds, isMuted, toggleMute } = useSound();
 
@@ -373,5 +373,19 @@ export default function SumasPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SumasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center bg-[#b6d7a8]">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-yellow-400 border-t-transparent" />
+        </div>
+      }
+    >
+      <SumasPageContent />
+    </Suspense>
   );
 }

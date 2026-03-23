@@ -2,7 +2,7 @@
 
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
 import { useSound } from "../providers";
 
@@ -69,7 +69,7 @@ const challenges = [
   { id: 8, name: "Secreto", symbol: "?", stars: 0, unlocked: false },
 ];
 
-export default function NivelesPage() {
+function NivelesPageContent() {
   const router = useRouter();
   const [selectedLevel, setSelectedLevel] = useState(0); // Índice del nivel seleccionado en carrusel
   const [isNavigating, setIsNavigating] = useState(false);
@@ -187,7 +187,7 @@ export default function NivelesPage() {
           )}
 
           {/* Niveles */}
-          <div className="relative w-11/12 sm:w-4/5 md:w-2/3 aspect-20/25 max-w-55 sm:max-w-[320px] md:max-w-100 mx-auto h-full">
+          <div className="relative w-11/12 sm:w-4/5 md:w-2/3 aspect-20/25 max-w-55 sm:max-w-[320px] md:max-w-100 mx-auto h-full lg:mt-12">
             {levels.map((level, index) => {
               const isActive = index === selectedLevel;
               const isNext = index === selectedLevel + 1;
@@ -208,7 +208,7 @@ export default function NivelesPage() {
                   style={{ pointerEvents: isActive ? 'auto' : 'none' }}
                 >
                   <div
-                    className={`h-full w-full ${level.unlocked && !isNavigating ? 'cursor-pointer grayscale-0' : 'cursor-not-allowed grayscale'}`}
+                    className={`h-full w-full ${level.unlocked && !isNavigating ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                     onClick={() => handleLevelSelect(level.id)}
                   >
                     <Image
@@ -216,14 +216,14 @@ export default function NivelesPage() {
                       alt={level.title}
                       fill
                       sizes="(max-width: 600px) 90vw, (max-width: 900px) 60vw, 400px"
-                      className="object-contain w-full h-full"
+                      className={`object-contain w-full h-full ${level.unlocked ? 'drop-shadow-lg' : 'filter grayscale opacity-70'}`}
                       priority={isActive}
                     />
 
                     {/* Lock overlay */}
                     {!level.unlocked && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <Image src="/candado.png" alt="Bloqueado" width={48} height={48} className="drop-shadow-lg w-12 h-12 md:w-16 md:h-16" />
+                        <Image src="/candado.png" alt="Bloqueado" width={48} height={72} className="w-18 h-24 md:w-16 md:h-16" />
                       </div>
                     )}
                   </div>
@@ -252,13 +252,11 @@ export default function NivelesPage() {
       </div>
 
       {/* Grilla de desafíos, ocupa el resto */}
-      <div className="flex-1 w-full px-2 py-4 md:p-6 overflow-y-auto flex flex-col items-center" style={{ minHeight: '40vh' }}>
-        <div className="w-full max-w-2xl grid grid-cols-3 grid-rows-3 gap-2 md:gap-4 h-full justify-items-center">
+      <div className="flex-1 w-full px-2 pb-4 md:p-6 overflow-y-auto flex flex-col items-center" style={{ minHeight: '40vh' }}>
+        <div className="w-full max-w-2xl grid grid-cols-3 grid-rows-3 md:grid-cols-4 gap-2 md:gap-4 h-full justify-items-center">
           {challenges.map((challenge, index) => {
             // Para la última fila (ítems 6 y 7), centrarlos en 3-3-2 y siempre al centro
             let extraGrid = '';
-            if (index === 6) extraGrid = 'col-span-1 col-start-2';
-            if (index === 7) extraGrid = 'col-span-1 col-start-3';
             return (
               <div
                 key={challenge.id}
@@ -278,7 +276,7 @@ export default function NivelesPage() {
 
                 {/* Símbolo del problema encima en negro */}
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center justify-center w-full">
-                  <span className="text-black text-3xl sm:text-5xl md:text-7xl font-bold drop-shadow-lg mt-1">{challenge.symbol}</span>
+                  <span className="text-black text-6xl sm:text-5xl md:text-7xl font-bold drop-shadow-lg mt-1.5 md:mt-0">{challenge.symbol}</span>
                 </div>
 
                 {/* Estrellas en la parte inferior */}
@@ -324,5 +322,19 @@ export default function NivelesPage() {
         <span className="text-[10px] font-medium uppercase tracking-[0.2em]">Salir</span>
       </button>
     </div>
+  );
+}
+
+export default function NivelesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center bg-linear-to-b from-green-800 to-green-950">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-yellow-400 border-t-transparent" />
+        </div>
+      }
+    >
+      <NivelesPageContent />
+    </Suspense>
   );
 }
