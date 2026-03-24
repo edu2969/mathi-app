@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Image from "next/image";
+import FinishedResults from "../../components/FinishedResults";
 import { useSound } from "../../providers";
+import NumericKeypad from "../../components/NumericKeypad";
+import CountDown from "../../components/CountDown";
 
 function generateProblem() {
   // Generar 8 sumandos como en el original (números del 2 al 8)
@@ -26,57 +29,7 @@ function formatElapsedTime(timeMs: number) {
   return `${(timeMs / 1000).toFixed(timeMs >= 10000 ? 1 : 2)} s`;
 }
 
-// Componente del teclado numérico (adaptado de EjercicioDojo.tsx)
-function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }: {
-  onDigit: (digit: string) => void;
-  onDelete: () => void;
-  onSubmit: () => void;
-  disabled: boolean;
-}) {
-  // Layout exacto del original: [1, 2, 3, 4, 5, 6, 7, 8, 9, "D", 0, "O"]
-  const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, "D", 0, "O"];
 
-  return (
-    <div className="flex flex-row flex-wrap justify-center w-full h-full px-2 py-4 bg-[#222] rounded-b-2xl shadow-inner border-t-4 border-black relative">
-      {/* Efecto brillo superior */}
-      <div className="absolute top-0 left-0 w-full h-3 bg-linear-to-b from-white/30 to-transparent rounded-t-2xl pointer-events-none" />
-      {keys.map((key, index) => {
-        const isDelete = key === "D";
-        const isOk = key === "O";
-        return (
-          <button
-            key={`tecla_${key}`}
-            disabled={disabled}
-            onClick={() => {
-              if (isDelete) onDelete();
-              else if (isOk) onSubmit();
-              else onDigit(key.toString());
-            }}
-            className={`
-              w-[30%] h-16 m-[1.5%] text-white text-2xl font-bold text-center
-              transition-all duration-200 shadow-lg
-              ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
-              ${isDelete ?
-                'bg-linear-to-b from-red-700 via-red-900 to-black border-b-4 border-red-900' :
-                isOk ?
-                  'bg-linear-to-b from-emerald-600 via-emerald-800 to-black border-b-4 border-emerald-900' :
-                  'bg-linear-to-b from-black via-gray-900 to-gray-800 border-b-4 border-gray-900'
-              }
-              rounded-xl
-              relative
-              overflow-hidden
-            `}
-            style={{ fontFamily: 'monospace', boxShadow: '0 2px 8px #0008' }}
-          >
-            {/* Brillo superior botón */}
-            <span className="absolute top-0 left-0 w-full h-2 bg-linear-to-b from-white/30 to-transparent rounded-t-xl pointer-events-none" />
-            <span className="relative z-10">{isDelete ? '⌫' : isOk ? '✓' : key}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 function SumasPageContent() {
   const router = useRouter();
@@ -90,7 +43,7 @@ function SumasPageContent() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [finished, setFinished] = useState(false);
-  const [countdownStep, setCountdownStep] = useState(0);
+
   const [isCountdownActive, setIsCountdownActive] = useState(true);
   const [currentResponseTimeMs, setCurrentResponseTimeMs] = useState<number | null>(null);
 
@@ -99,26 +52,7 @@ function SumasPageContent() {
 
   const problem = useMemo(() => generateProblem(), [questionIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!isCountdownActive) {
-      return;
-    }
-
-    if (countdownStep >= COUNTDOWN_STEPS.length - 1) {
-      const finishTimer = window.setTimeout(() => {
-        setIsCountdownActive(false);
-      }, 900);
-
-      return () => window.clearTimeout(finishTimer);
-    }
-
-    const timer = window.setTimeout(() => {
-      setCountdownStep((previousStep) => previousStep + 1);
-    }, 1000);
-
-    return () => window.clearTimeout(timer);
-  }, [countdownStep, isCountdownActive]);
-
+  // Start timing when countdown finishes and question is ready
   useEffect(() => {
     if (!isCountdownActive && !finished && !isSubmitted) {
       questionStartTimeRef.current = performance.now();
@@ -187,7 +121,6 @@ function SumasPageContent() {
     setIsSubmitted(false);
     setIsCorrect(null);
     setFinished(false);
-    setCountdownStep(0);
     setIsCountdownActive(true);
     setCurrentResponseTimeMs(null);
     answerTimesRef.current = [];
@@ -206,57 +139,15 @@ function SumasPageContent() {
 
   // Finished screen
   if (finished) {
-    // Seleccionar fondo según estrellas
-    let bgImg = "/result_bg-1.png";
-    if (stars === 2) bgImg = "/result_bg-2.png";
-    if (stars === 3) bgImg = "/result_bg-3.png";
-
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden">
-        {/* Fondo con overlay oscuro */}
-        <Image
-          src={bgImg}
-          alt="Fondo resultado"
-          fill
-          priority
-          className="object-cover z-0"
-          style={{ filter: 'brightness(0.45)' }}
-        />
-        {/* Overlay negro semitransparente extra */}
-        <div className="absolute inset-0 bg-black/10 z-10" />
-        {/* Contenido */}
-        <div className="relative z-20 flex flex-col items-center justify-center gap-6 px-2 sm:px-4 py-6 w-full">
-          <h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 text-center drop-shadow-lg">¡Nivel completado!</h2>
-          <div className="flex gap-2 justify-center">
-            {[1, 2, 3].map((i) => (
-              <Image
-                key={i}
-                src="/estrella.png"
-                alt="Estrella"
-                width={40}
-                height={40}
-                className={i <= stars ? "drop-shadow-md" : "opacity-30 grayscale"}
-              />
-            ))}
-          </div>
-          <p className="text-lg sm:text-xl text-white text-center drop-shadow">{score} / {TOTAL_QUESTIONS} respuestas correctas</p>
-          <p className="text-base sm:text-lg text-slate-100 text-center drop-shadow">Tiempo promedio: {formatElapsedTime(averageTimeMs)}</p>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none justify-center">
-            <button
-              onClick={handleRetry}
-              className="rounded-xl bg-yellow-400 px-4 sm:px-6 py-2 sm:py-3 font-bold text-green-900 shadow-md transition-colors hover:bg-yellow-300 w-full sm:w-auto"
-            >
-              Reintentar
-            </button>
-            <button
-              onClick={handleBackToLevels}
-              className="rounded-xl border-2 border-yellow-400/60 px-4 sm:px-6 py-2 sm:py-3 font-bold text-yellow-300 transition-colors hover:bg-green-700 w-full sm:w-auto"
-            >
-              Volver
-            </button>
-          </div>
-        </div>
-      </div>
+      <FinishedResults
+        stars={stars}
+        score={score}
+        totalQuestions={TOTAL_QUESTIONS}
+        averageTimeMs={averageTimeMs}
+        onRetry={handleRetry}
+        onBack={handleBackToLevels}
+      />
     );
   }
 
@@ -266,14 +157,14 @@ function SumasPageContent() {
       <header className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-2 sm:px-6 py-3 sm:py-4 bg-transparent">
         <button
           onClick={() => router.push('/niveles')}
-          className="flex items-center gap-2 text-xs sm:text-sm font-medium text-white hover:text-yellow-300 transition-colors"
+          className="flex items-center gap-2 text-xs sm:text-sm font-medium text-black hover:text-white transition-colors"
         >
           <Image
             src="/flecha_izquierda.png"
             alt="Volver"
-            width={32}
-            height={32}
-            className="drop-shadow-lg w-8 h-8 sm:w-10 sm:h-10"
+            width={42}
+            height={42}
+            className="drop-shadow-lg w-12 h-12"
             style={{ height: 'auto' }}
           />
           <span className="text-lg sm:text-2xl">Salir</span>
@@ -290,27 +181,16 @@ function SumasPageContent() {
       </header>
 
       {/* Ejercicio y teclado */}
-      <main className="flex-1 flex flex-col-reverse md:flex-row w-full pt-24 pb-0 md:pt-8 md:pb-0 gap-2 md:gap-0">
-        {/* Teclado numérico */}
-        <section className="w-full md:w-2/5 flex items-end md:items-center justify-center px-0 md:px-0 pb-2 md:pb-0">
-          <div className="w-full max-w-md px-0 md:px-4">
-            <NumericKeypad
-              onDigit={handleDigit}
-              onDelete={handleDelete}
-              onSubmit={handleSubmit}
-              disabled={isCountdownActive || isSubmitted}
-            />
-          </div>
-        </section>
-
+      <main className="flex-1 flex flex-col md:flex-row w-full pt-18 pb-0 md:pt-8 md:pb-0 gap-2 md:gap-0">
+        
         {/* Ejercicio */}
-        <section className="w-full md:w-3/5 flex flex-col items-center justify-center px-2 md:px-0">
+        <section className="w-full md:w-3/5 flex flex-col px-4 md:px-0">
           <div className="flex flex-row items-start w-full max-w-lg mx-auto mb-2">
             {/* Número de ejercicio vertical */}
             <div className="flex flex-col items-start justify-start mr-4 min-w-17.5">
-              <span className="text-xs sm:text-lg text-slate-700 mb-1">EJERCICIO</span>
-              <span className="text-5xl sm:text-6xl text-black font-bold font-mono leading-none">
-                {questionIndex + 1}/{TOTAL_QUESTIONS}
+              <span className="text-md sm:text-lg text-slate-700 mb-1"><b>Ejercicio</b></span>
+              <span className="text-6xl sm:text-6xl text-black font-bold leading-none" style={{ fontFamily: 'var(--font-dotgothic)' }}>
+                {questionIndex + 1}<small className="text-xl px-2">/</small>{TOTAL_QUESTIONS}
               </span>
             </div>
             {/* Área de suma */}
@@ -320,7 +200,7 @@ function SumasPageContent() {
                 <div className="flex flex-col space-y-0.5 sm:space-y-1">
                   {problem.sumandos.map((sumando, index) => (
                     <div key={index} className="text-right">
-                      <span className="text-2xl sm:text-5xl text-black font-bold font-mono">
+                      <span className="text-3xl sm:text-5xl text-black font-bold" style={{ fontFamily: 'var(--font-dotgothic)' }}>
                         {isCountdownActive ? '?' : sumando}
                       </span>
                     </div>
@@ -341,22 +221,24 @@ function SumasPageContent() {
             </div>
           </div>
         </section>
+
+        {/* Teclado numérico */}
+        <section className="fixed w-full bottom-0 bg-black flex items-end md:items-center justify-center px-0 md:px-0 md:pb-0">
+          <div className="w-full max-w-md px-0">
+            <NumericKeypad
+              onDigit={handleDigit}
+              onDelete={handleDelete}
+              onSubmit={handleSubmit}
+              disabled={isCountdownActive || isSubmitted}
+            />
+          </div>
+        </section>
+
+
       </main>
 
-      {/* Countdown overlay */}
       {isCountdownActive && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/20 backdrop-blur-[1px] pointer-events-none">
-          <div
-            key={COUNTDOWN_STEPS[countdownStep]}
-            className="countdown-burst select-none text-5xl sm:text-7xl font-black uppercase tracking-[0.2em] text-yellow-300"
-            style={{
-              WebkitTextStroke: '2px rgba(15, 23, 42, 0.85)',
-              textShadow: '0 10px 24px rgba(15, 23, 42, 0.6), 0 0 30px rgba(250, 204, 21, 0.3)',
-            }}
-          >
-            {COUNTDOWN_STEPS[countdownStep]}
-          </div>
-        </div>
+        <CountDown steps={COUNTDOWN_STEPS} onFinish={() => setIsCountdownActive(false)} />
       )}
 
       {/* Feedback */}

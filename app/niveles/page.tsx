@@ -4,6 +4,7 @@ import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
+import ChallengeGrid from "../components/ChallengeGrid";
 import LevelCarrouselSelector from "../components/LevelCarrouselSelector";
 import { useSound } from "../providers";
 
@@ -91,18 +92,6 @@ function NivelesPageContent() {
     playLevelSound(newLevel);
   }, [playLevelSound, selectedLevel, setCurrentLevel]);
 
-  const nextLevel = () => {
-    if (selectedLevel < levels.length - 1) {
-      setSelectedLevel(selectedLevel + 1);
-    }
-  };
-
-  const prevLevel = () => {
-    if (selectedLevel > 0) {
-      setSelectedLevel(selectedLevel - 1);
-    }
-  };
-
   const navigateToExercise = async () => {
     if (isNavigating) {
       return;
@@ -148,7 +137,7 @@ function NivelesPageContent() {
 
   return (
     <div
-      className="min-h-screen flex flex-col relative"
+      className="h-dvh md:h-screen flex flex-col relative overflow-hidden"
       style={{
         backgroundImage: "url('/bg-vertical.png')",
         backgroundSize: 'cover',
@@ -177,60 +166,11 @@ function NivelesPageContent() {
       />
 
       {/* Grilla de desafíos, ocupa el resto */}
-      <div className="flex-1 w-full px-2 pb-4 md:p-6 overflow-y-auto flex flex-col items-center" style={{ minHeight: '40vh' }}>
-        <div className="w-full max-w-2xl grid grid-cols-3 grid-rows-3 md:grid-cols-4 gap-2 md:gap-4 h-full justify-items-center">
-          {challenges.map((challenge, index) => {
-            // Para la última fila (ítems 6 y 7), centrarlos en 3-3-2 y siempre al centro
-            let extraGrid = '';
-            return (
-              <div
-                key={challenge.id}
-                onClick={() => handleChallengeSelect(challenge.id)}
-                className={`relative aspect-120/147 w-10/12 sm:w-9/12 md:w-8/12 max-w-55 transition-all duration-200 overflow-hidden rounded-2xl shadow-md ${
-                  challenge.unlocked && !isNavigating ? "cursor-pointer hover:scale-105" : "opacity-60"
-                } ${extraGrid}`}
-              >
-                <Image
-                  src="/desafio_back_vacio.png"
-                  alt={challenge.name}
-                  fill
-                  sizes="(max-width: 600px) 45vw, (max-width: 900px) 22vw, 120px"
-                  className="object-contain w-full h-full"
-                  priority={index < 2}
-                />
-
-                {/* Símbolo del problema encima en negro */}
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center justify-center w-full">
-                  <span className="text-black text-6xl sm:text-5xl md:text-7xl font-bold drop-shadow-lg mt-1.5 md:mt-0">{challenge.symbol}</span>
-                </div>
-
-                {/* Estrellas en la parte inferior */}
-                {challenge.stars > 0 && (
-                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1 -ml-2">
-                    {Array.from({ length: challenge.stars }, (_, starIndex) => (
-                      <Image
-                        key={starIndex}
-                        src="/estrella.png"
-                        alt="Estrella"
-                        width={20}
-                        height={20}
-                        className="drop-shadow-md w-5 h-5 md:w-6 md:h-6"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Lock overlay */}
-                {!challenge.unlocked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-2xl">
-                    <Image src="/candado.png" alt="Bloqueado" width={40} height={40} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <ChallengeGrid
+        challenges={challenges}
+        isNavigating={isNavigating}
+        onChallengeSelect={handleChallengeSelect}
+      />
 
       {/* Botón salir siempre visible y sobre todo */}
       <button
