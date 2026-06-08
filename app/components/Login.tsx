@@ -25,7 +25,7 @@ function LoginPageContent() {
     if (res?.error) {
       setError("Email o contraseña incorrectos");
     } else {
-      router.push("/niveles");
+      router.push("/levels");
     }
   };
 
@@ -105,7 +105,7 @@ function LoginPageContent() {
   );
 }
 
-export default function LoginPage() {
+export default function Login() {
   return (
     <Suspense
       fallback={

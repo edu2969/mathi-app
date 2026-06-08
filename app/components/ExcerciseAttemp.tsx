@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import Image from "next/image";
-import FinishedResults from "../../components/FinishedResults";
-import { useSound } from "../../providers";
-import NumericKeypad from "../../components/NumericKeypad";
-import CountDown from "../../components/CountDown";
+import FinishedResults from "./FinishedResults";
+import { useSound } from "@/app/providers/SoundProvider";
+import NumericKeypad from "./NumericKeypad";
+import CountDown from "./CountDown";
+import { useMutation } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 
 function generateProblem() {
   // Generar 8 sumandos como en el original (números del 2 al 8)
@@ -29,9 +31,7 @@ function formatElapsedTime(timeMs: number) {
   return `${(timeMs / 1000).toFixed(timeMs >= 10000 ? 1 : 2)} s`;
 }
 
-
-
-function SumasPageContent() {
+function SumasPageContent({ challengeId }: { challengeId: string }) {
   const router = useRouter();
   const { playResultSound, stopAllSounds, isMuted, toggleMute } = useSound();
 
@@ -51,6 +51,28 @@ function SumasPageContent() {
   const questionStartTimeRef = useRef<number | null>(null);
 
   const problem = useMemo(() => generateProblem(), [questionIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const attempRegistrationMutation = useMutation({
+    mutationFn: async (data: { score: number; averageTimeMs: number; stars: number }) => {
+      const res = await fetch(`/api/attempts/${challengeId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to register attempt");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      console.log("Attempt registered successfully");
+    },
+    onError: (error) => {
+      console.error("Error registering attempt:", error);
+    },
+  });
 
   // Start timing when countdown finishes and question is ready
   useEffect(() => {
@@ -100,6 +122,12 @@ function SumasPageContent() {
         setStars(newStars);
         setFinished(true);
 
+        attempRegistrationMutation.mutate({
+          score: finalScore,
+          averageTimeMs: avgTimeMs,
+          stars: newStars,
+        });
+
         // Reproducir sonido según las estrellas obtenidas
         playResultSound(newStars);
       } else {
@@ -134,7 +162,7 @@ function SumasPageContent() {
 
   const handleBackToLevels = useCallback(() => {
     stopAllSounds();
-    router.push("/niveles");
+    router.push("/levels");
   }, [router, stopAllSounds]);
 
   // Finished screen
@@ -156,7 +184,7 @@ function SumasPageContent() {
       {/* Top bar - header transparente */}
       <header className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-2 sm:px-6 py-3 sm:py-4 bg-transparent">
         <button
-          onClick={() => router.push('/niveles')}
+          onClick={() => router.push('/levels')}
           className="flex items-center gap-2 text-xs sm:text-sm font-medium text-black hover:text-white transition-colors"
         >
           <Image
@@ -182,7 +210,7 @@ function SumasPageContent() {
 
       {/* Ejercicio y teclado */}
       <main className="flex-1 flex flex-col md:flex-row w-full pt-18 pb-0 md:pt-8 md:pb-0 gap-2 md:gap-0">
-        
+
         {/* Ejercicio */}
         <section className="w-full md:w-3/5 flex flex-col px-4 md:px-0">
           <div className="flex flex-row items-start w-full max-w-lg mx-auto mb-2">
@@ -243,22 +271,61 @@ function SumasPageContent() {
 
       {/* Feedback */}
       {isCorrect !== null && (
-        <div className={`absolute top-1/2 left-1/2 z-40 transform -translate-x-1/2 p-4 rounded-xl ${isCorrect ? 'bg-emerald-500/20 border-emerald-400' : 'bg-red-500/20 border-red-400'} border-2 w-11/12 max-w-xs sm:max-w-md`}>
-          <p className={`text-lg sm:text-xl font-bold text-center ${isCorrect ? 'text-emerald-300' : 'text-red-300'}`}>
-            {isCorrect ? '¡Correcto! 🎉' : `Incorrecto — era ${problem.correct}`}
-          </p>
-          {currentResponseTimeMs !== null && (
-            <p className="mt-2 text-center text-xs sm:text-sm font-semibold text-white">
-              Tiempo: {formatElapsedTime(currentResponseTimeMs)}
-            </p>
+        <AnimatePresence>
+          {isCorrect !== null && (
+           <motion.div
+      key="feedback-modal"
+      initial={{ opacity: 0, scale: 0.3 }}
+      animate={isCorrect ? 
+        { 
+          opacity: 1, 
+          scale: [0.3, 1.2, 1],  // Solo dos keyframes para bounce
+          rotate: [0, -5, 5, -3, 3, 0],
+          transition: { 
+            type: "tween" as const,  // ← Cambiar a tween
+            duration: 0.5,
+            ease: "easeOut"
+          }
+        } : 
+        { 
+          opacity: 1, 
+          scale: 1,
+          x: [0, -10, 10, -8, 8, -4, 4, 0],
+          transition: { 
+            type: "tween" as const,  // ← Cambiar a tween
+            duration: 0.4,
+            ease: "easeInOut"
+          }
+        }
+      }
+      exit={{ opacity: 0, scale: 0.3 }}
+      className={`absolute top-1/2 left-1/2 z-40 transform -translate-x-1/2 -translate-y-1/2 p-4 rounded-xl ${
+        isCorrect ? 'bg-emerald-500/90 border-emerald-400' : 'bg-red-500/80 border-red-400'
+      } border-2 w-11/12 max-w-xs sm:max-w-md`}
+    >
+              
+                <p className={`text-3xl sm:text-4xl font-bold text-center ${isCorrect ? 'text-emerald-300' : 'text-red-300'}`}>
+                  {isCorrect ? '¡Correcto! 🎉' : `Incorrecto: es`}
+                </p>
+                <p className={`text-5xl sm:text-4xl font-bold text-center ${isCorrect ? 'text-emerald-100' : 'text-red-100'}`}>
+                  {problem.correct}
+                </p>
+                {currentResponseTimeMs !== null && (
+                  <p className="mt-2 text-center text-md sm:text-sm font-semibold text-white/70">
+                    Tiempo: {formatElapsedTime(currentResponseTimeMs)}
+                  </p>
+                )}
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
+
+
       )}
     </div>
   );
 }
 
-export default function SumasPage() {
+export default function ExcerciseAttemp({ challengeId }: { challengeId: string }) {
   return (
     <Suspense
       fallback={
@@ -267,7 +334,7 @@ export default function SumasPage() {
         </div>
       }
     >
-      <SumasPageContent />
+      <SumasPageContent challengeId={challengeId} />
     </Suspense>
   );
 }

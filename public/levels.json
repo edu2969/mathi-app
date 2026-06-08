@@ -1,0 +1,47 @@
+[
+  {
+    "_id": { "$oid": "65a1f2b3c4d5e6f7a8b9c0d1" },
+    "title": "The Beginning of Numbers",
+    "order": 1,
+    "problemIds": [
+      "prob_add_001",
+      "prob_sub_002",
+      "prob_mul_003",
+      "prob_div_004",
+      "prob_square_005",
+      "prob_cube_006",
+      "prob_sqrt_007",
+      "prob_pattern_008"
+    ]
+  },
+  {
+    "_id": { "$oid": "65b2f3c4d5e6f7a8b9c0d1e2" },
+    "title": "The Jungle of Irrationals",
+    "order": 2,
+    "problemIds": [
+      "prob_pi_009",
+      "prob_e_010",
+      "prob_sqrt2_011",
+      "prob_phi_012",
+      "prob_cuberoot3_013",
+      "prob_fourthroot5_014",
+      "prob_infinity_015",
+      "prob_aleph_016"
+    ]
+  },
+  {
+    "_id": { "$oid": "65c3f4d5e6f7a8b9c0d1e2f3" },
+    "title": "The Castle of Harmony",
+    "order": 3,
+    "problemIds": [
+      "prob_div_017",
+      "prob_mul_018",
+      "prob_sqrt_019",
+      "prob_approx_020",
+      "prob_fraction_021",
+      "prob_limit_022",
+      "prob_integral_023",
+      "prob_sum_024"
+    ]
+  }
+]

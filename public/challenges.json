@@ -1,0 +1,194 @@
+[
+  {
+    "_id": "prob_add_001",
+    "name": "+",
+    "symbol": "＋",
+    "explain": "Agrupa los dígitos por posición. Suma unidades con unidades, decenas con decenas. Si el resultado supera 9, lleva la decena siguiente. Memoriza sumas básicas (7+5=12) para rapidez.",
+    "category": "arithmetic",
+    "difficulty": 1
+  },
+  {
+    "_id": "prob_sub_002",
+    "name": "−",
+    "symbol": "−",
+    "explain": "Descompón el minuendo en decenas y unidades. Si necesitas restar más de lo disponible, toma prestada una decena del siguiente. Practica restas básicas inversas a sumas.",
+    "category": "arithmetic",
+    "difficulty": 1
+  },
+  {
+    "_id": "prob_mul_003",
+    "name": "×",
+    "symbol": "×",
+    "explain": "Descompón en factores. Usa distributividad: 7×24 = 7×(20+4) = 140+28. Memoriza tablas de multiplicar. Cuenta mentalmente en saltos iguales.",
+    "category": "arithmetic",
+    "difficulty": 1
+  },
+  {
+    "_id": "prob_div_004",
+    "name": "÷",
+    "symbol": "÷",
+    "explain": "Busca cuántas veces cabe el divisor en el dividendo. Usa múltiplos conocidos. Factoriza para simplificar. Verifica: cociente × divisor + residuo = dividendo.",
+    "category": "arithmetic",
+    "difficulty": 1
+  },
+  {
+    "_id": "prob_square_005",
+    "name": "x²",
+    "symbol": "²",
+    "explain": "Memoriza cuadrados hasta 20². Reconoce patrones: (n+1)² = n² + 2n + 1. Usa descomposición: 13² = (10+3)² = 100 + 60 + 9 = 169.",
+    "category": "exponents",
+    "difficulty": 2
+  },
+  {
+    "_id": "prob_cube_006",
+    "name": "x³",
+    "symbol": "³",
+    "explain": "Memoriza cubos básicos (1³ a 10³). Identifica patrones en último dígito. Descompón: 12³ = 12×12×12. Relaciona con volúmenes.",
+    "category": "exponents",
+    "difficulty": 2
+  },
+  {
+    "_id": "prob_sqrt_007",
+    "name": "√",
+    "symbol": "√",
+    "explain": "Factoriza en primos. Extrae pares de factores iguales. Memoriza raíces perfectas. Aproxima con interpolación entre cuadrados conocidos.",
+    "category": "roots",
+    "difficulty": 2
+  },
+  {
+    "_id": "prob_pattern_008",
+    "name": "?",
+    "symbol": "?",
+    "explain": "Observa patrones en secuencias. Busca diferencias constantes, razones o reglas geométricas. Valida tu hipótesis aplicándola a todos los términos.",
+    "category": "patterns",
+    "difficulty": 2
+  },
+  {
+    "_id": "prob_pi_009",
+    "name": "π",
+    "symbol": "π",
+    "explain": "Ratio constante: perímetro÷diámetro = π ≈ 3.14159. Memoriza primeros dígitos. Úsalo en fórmulas de círculos y esferas. Visualiza como la curva perfecta.",
+    "category": "constants",
+    "difficulty": 3
+  },
+  {
+    "_id": "prob_e_010",
+    "name": "e",
+    "symbol": "ℯ",
+    "explain": "Base del crecimiento natural: e ≈ 2.71828. Aparece en interés compuesto y decaimiento exponencial. Límite de (1+1/n)ⁿ cuando n→∞.",
+    "category": "constants",
+    "difficulty": 3
+  },
+  {
+    "_id": "prob_sqrt2_011",
+    "name": "√2",
+    "symbol": "√",
+    "explain": "Primera raíz irracional: √2 ≈ 1.414. Es diagonal de cuadrado unitario. No puede escribirse como fracción. Relaciona con hipotenusa de triángulo 45-45-90.",
+    "category": "roots",
+    "difficulty": 3
+  },
+  {
+    "_id": "prob_phi_012",
+    "name": "φ",
+    "symbol": "φ",
+    "explain": "Proporción áurea: φ ≈ 1.618. Divide segmento en media y extrema razón. Aparece en naturaleza, arte, flores. φ² = φ + 1.",
+    "category": "constants",
+    "difficulty": 3
+  },
+  {
+    "_id": "prob_cuberoot3_013",
+    "name": "√3",
+    "symbol": "∛",
+    "explain": "Raíz cúbica de 3 ≈ 1.442. Altura de triángulo equilátero de lado 2. Menos común que √2, pero importante en simetrías 3D.",
+    "category": "roots",
+    "difficulty": 3
+  },
+  {
+    "_id": "prob_fourthroot5_014",
+    "name": "√5",
+    "symbol": "∜",
+    "explain": "√5 ≈ 2.236. Relacionada con rectángulo áureo y pentágono. (1+√5)/2 = φ. Aparece en sucesión Fibonacci.",
+    "category": "roots",
+    "difficulty": 3
+  },
+  {
+    "_id": "prob_infinity_015",
+    "name": "∞",
+    "symbol": "∞",
+    "explain": "No es número, es concepto de ilimitado. Úsalo en límites y series. ∞ + 1 = ∞. Infinitos tamaños existen: ℵ₀ < ℵ₁.",
+    "category": "concepts",
+    "difficulty": 4
+  },
+  {
+    "_id": "prob_aleph_016",
+    "name": "ℵ",
+    "symbol": "ℵ",
+    "explain": "Cardinal infinito (alef). ℵ₀ = infinito contable. Hay ℵ₀ números naturales pero más números reales. Concepto profundo de teoría de conjuntos.",
+    "category": "concepts",
+    "difficulty": 4
+  },
+  {
+    "_id": "prob_div_017",
+    "name": "÷",
+    "symbol": "÷",
+    "explain": "División larga: divide, multiplica, resta, baja. Simplifica fracciones antes de dividir. Identifica patrones en cocientes repetitivos. Verifica: cociente × divisor = dividendo.",
+    "category": "arithmetic",
+    "difficulty": 2
+  },
+  {
+    "_id": "prob_mul_018",
+    "name": "×",
+    "symbol": "⋅",
+    "explain": "Multiplica distributivamente. Agrupa factores similares. Usa identidades: (a+b)(c+d) = ac+ad+bc+bd. Reconoce patrones de cuadrados notables.",
+    "category": "arithmetic",
+    "difficulty": 2
+  },
+  {
+    "_id": "prob_sqrt_019",
+    "name": "√",
+    "symbol": "√",
+    "explain": "Extrae raíces de radicales compuestos. Factoriza completamente. √(ab) = √a·√b. Racionaliza denominadores. Simplifica radicales anidados.",
+    "category": "roots",
+    "difficulty": 3
+  },
+  {
+    "_id": "prob_approx_020",
+    "name": "=",
+    "symbol": "≈",
+    "explain": "Aproximación: ≈ significa cercano, no exacto. Redondea según contexto. Usa cifras significativas. Calcula error relativo. Valida si aproximación es razonable.",
+    "category": "estimation",
+    "difficulty": 2
+  },
+  {
+    "_id": "prob_fraction_021",
+    "name": "⁄",
+    "symbol": "⁄",
+    "explain": "Opera con fracciones: suma con denominador común, multiplica directo, divide invirtiendo. Simplifica antes de multiplicar. Reduce a forma irreducible final.",
+    "category": "fractions",
+    "difficulty": 2
+  },
+  {
+    "_id": "prob_limit_022",
+    "name": "∞",
+    "symbol": "∞",
+    "explain": "Límites: observa comportamiento cuando variable tiende a infinito. Series infinitas: verifica convergencia. Usa criterios: razón, raíz, comparación.",
+    "category": "calculus",
+    "difficulty": 4
+  },
+  {
+    "_id": "prob_integral_023",
+    "name": "∫",
+    "symbol": "∫",
+    "explain": "Integral: suma infinita de áreas infinitesimales. ∫f(x)dx = F(x) + C. Usa propiedades: linealidad, sustitución. Practica antiderivadas de funciones estándar.",
+    "category": "calculus",
+    "difficulty": 4
+  },
+  {
+    "_id": "prob_sum_024",
+    "name": "∑",
+    "symbol": "∑",
+    "explain": "Sumatoria: suma términos según patrón. Σ aₙ de n=1 a N. Usa fórmulas de series geométricas y aritméticas. Reconoce telescopios.",
+    "category": "sequences",
+    "difficulty": 3
+  }
+]

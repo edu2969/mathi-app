@@ -1,16 +1,9 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
-
-export interface Level {
-    id: number;
-    title: string;
-    image: string;
-    unlocked: boolean;
-    problems: any[];
-}
+import { LevelsResponse } from "../types/types";
 
 interface LevelCarrouselProps {
-    levels: Level[];
+    levels: LevelsResponse[];
     onLevelSelect: (levelId: number) => void;
     playLevelSound: (level: number) => void;
     setCurrentLevel: (level: number) => void;
@@ -52,7 +45,7 @@ export default function LevelCarrousel({
                 {selectedLevel > 0 && (
                     <button
                         onClick={prevLevel}
-                        className="absolute -left-1/2 z-20 bg-transparent p-2 rounded-full transition-all duration-200 hover:scale-110"
+                        className="absolute -left-1/3 md:-left-1/2 z-20 bg-transparent p-2 rounded-full transition-all duration-200 hover:scale-110"
                         aria-label="Nivel anterior"
                     >
                         <Image
@@ -75,7 +68,7 @@ export default function LevelCarrousel({
 
                         return (
                             <div
-                                key={level.id}
+                                key={`image_level_${index}`}
                                 className={`absolute inset-0 transition-all duration-500 ${isActive
                                         ? 'opacity-100 scale-100 z-20'
                                         : isNext || isPrev
@@ -87,20 +80,20 @@ export default function LevelCarrousel({
                             >
                                 <div
                                     className={`w-full h-full flex flex-col justify-end items-center ${level.unlocked && !isNavigating ? 'cursor-pointer' : 'cursor-not-allowed'}`}
-                                    onClick={() => onLevelSelect(level.id)}
+                                    onClick={() => onLevelSelect(level.order)}
                                     style={{ position: 'relative', height: '100%' }}
                                 >
                                     <div className="relative w-full aspect-3/4 min-h-55 sm:min-h-80 md:min-h-95 lg:min-h-105" style={{ height: '100%' }}>
-                                        <Image
-                                            src={level.image}
+                                        <Image                                        
+                                            src={`/level_0${index + 1}.png`}
                                             alt={level.title}
                                             fill
                                             sizes="(max-width: 600px) 90vw, (max-width: 900px) 60vw, 400px"
-                                            className={`object-contain w-full h-full ${level.unlocked ? 'drop-shadow-lg' : 'filter grayscale opacity-70'}`}
+                                            className={`object-contain w-full h-full ${(level.unlocked || index === 0) ? 'drop-shadow-lg' : 'filter grayscale opacity-70'}`}
                                             priority={isActive}
                                         />
                                         {/* Lock overlay */}
-                                        {!level.unlocked && (
+                                        {!level.unlocked && index > 0 && (
                                             <div className="absolute inset-0 flex items-center justify-center">
                                                 <Image src="/candado.png" alt="Bloqueado" width={48} height={72} className="w-16 h-24 md:w-16 md:h-24" />
                                             </div>
@@ -130,7 +123,7 @@ export default function LevelCarrousel({
                 {selectedLevel < levels.length - 1 && (
                     <button
                         onClick={nextLevel}
-                        className="absolute -right-1/2 z-20 bg-transparent p-2 rounded-full transition-all duration-200 hover:scale-110"
+                        className="absolute -right-1/3 md:-right-1/2 z-20 bg-transparent p-2 rounded-full transition-all duration-200 hover:scale-110"
                         aria-label="Nivel siguiente"
                     >
                         <Image

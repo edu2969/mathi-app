@@ -3,77 +3,15 @@
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
-import Image from "next/image";
-import ChallengeGrid from "../components/ChallengeGrid";
-import LevelCarrouselSelector from "../components/LevelCarrouselSelector";
-import { useSound } from "../providers";
-
-const levels = [
-  { 
-    id: 1, 
-    title: "The Beginning of Numbers", 
-    image: "/level_01.png", 
-    unlocked: true,
-    problems: [
-      { name: "+", symbol: "+", unlocked: true },
-      { name: "-", symbol: "-", unlocked: true },
-      { name: "×", symbol: "×", unlocked: false },
-      { name: "÷", symbol: "÷", unlocked: false },
-      { name: "x²", symbol: "x²", unlocked: false },
-      { name: "x³", symbol: "x³", unlocked: false },
-      { name: "√", symbol: "√", unlocked: false },
-      { name: "?", symbol: "?", unlocked: false }
-    ]
-  },
-  { 
-    id: 2, 
-    title: "The Jungle of Irrationals", 
-    image: "/level_02.png", 
-    unlocked: false,
-    problems: [
-      { name: "Q₁", symbol: "π", unlocked: false },
-      { name: "Q₂", symbol: "e", unlocked: false },
-      { name: "Q₃", symbol: "√2", unlocked: false },
-      { name: "Q₄", symbol: "φ", unlocked: false },
-      { name: "Q₅", symbol: "√3", unlocked: false },
-      { name: "Q₆", symbol: "√5", unlocked: false },
-      { name: "Q₇", symbol: "ℵ", unlocked: false },
-      { name: "Q₈", symbol: "∞", unlocked: false }
-    ]
-  },
-  { 
-    id: 3, 
-    title: "The Castle of Harmony", 
-    image: "/level_03.png", 
-    unlocked: false,
-    problems: [
-      { name: "÷9", symbol: "÷9", unlocked: false },
-      { name: "×25", symbol: "×25", unlocked: false },
-      { name: "√n", symbol: "√n", unlocked: false },
-      { name: "X=a×b", symbol: "X=a×b", unlocked: false },
-      { name: "34÷56", symbol: "34÷56", unlocked: false },
-      { name: "11×??", symbol: "11×??", unlocked: false },
-      { name: "a/b", symbol: "a/b", unlocked: false },
-      { name: "xⁿ", symbol: "xⁿ", unlocked: false }
-    ]
-  },
-];
-
-// Desafíos de la grilla inferior
-const challenges = [
-  { id: 1, name: "Suma Básica", symbol: "+", stars: 3, unlocked: true },
-  { id: 2, name: "Resta Simple", symbol: "-", stars: 2, unlocked: true },
-  { id: 3, name: "Multi x2", symbol: "×", stars: 1, unlocked: false },
-  { id: 4, name: "División", symbol: "÷", stars: 0, unlocked: false },
-  { id: 5, name: "Cuadrados", symbol: "x²", stars: 0, unlocked: false },
-  { id: 6, name: "Raíces", symbol: "√", stars: 0, unlocked: false },
-  { id: 7, name: "Fracciones", symbol: "a/b", stars: 0, unlocked: false },
-  { id: 8, name: "Secreto", symbol: "?", stars: 0, unlocked: false },
-];
+import ChallengeGrid from "./ChallengeGrid";
+import LevelCarrouselSelector from "./LevelCarrouselSelector";
+import { useSound } from "@/app/providers/SoundProvider";
+import { useQuery } from "@tanstack/react-query";
+import { ChallengesResponse, LevelsResponse } from "../types/types";
 
 function NivelesPageContent() {
   const router = useRouter();
-  const [selectedLevel, setSelectedLevel] = useState(0); // Índice del nivel seleccionado en carrusel
+  const [selectedLevel, setSelectedLevel] = useState(0); 
   const [isNavigating, setIsNavigating] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const {
@@ -83,16 +21,48 @@ function NivelesPageContent() {
     playLevelSound,
     setCurrentLevel,
     toggleMute,
-  } = useSound();
+  } = useSound();  
+
+  const { data: levels, isLoading: isLoadingLevels } = useQuery<LevelsResponse[]>({
+    queryKey: ["user-levels"],
+    queryFn: async () => {
+      const res = await fetch("/api/levels");
+        if (!res.ok) {
+            throw new Error("Error fetching levels");
+        }
+        const data = await res.json();
+        console.log("Fetched levels:", data);
+        return data.levels;
+    },
+    initialData: [],
+  });
+
+  const { data: challenges, isLoading: isLoadingChallenges } = useQuery<ChallengesResponse[]>({
+    queryKey: ["user-challenges", selectedLevel],
+    queryFn: async () => {
+      if(levels.length === 0) {
+        return [];
+      }
+      const res = await fetch(`/api/challenges/byId/${levels[selectedLevel]?._id}`);
+        if (!res.ok) {
+            throw new Error("Error fetching challenges");
+        }
+        const data = await res.json();
+        console.log("Fetched challenges:", data);
+        return data.challenges;
+    },
+    initialData: [],
+    enabled: levels.length > 0,
+  });
 
   // Efecto para cambiar la música cuando cambia el nivel seleccionado
   useEffect(() => {
-    const newLevel = selectedLevel + 1; // Convertir índice a número de nivel
+    const newLevel = (selectedLevel ?? 0) + 1; // Convertir índice a número de nivel
     setCurrentLevel(newLevel);
     playLevelSound(newLevel);
   }, [playLevelSound, selectedLevel, setCurrentLevel]);
 
-  const navigateToExercise = async () => {
+  const navigateToExercise = async (challengeId: string) => {
     if (isNavigating) {
       return;
     }
@@ -102,7 +72,7 @@ function NivelesPageContent() {
     try {
       await fadeOutLevelSound();
     } finally {
-      router.push("/ejercicio/sumas");
+      router.push(`/attemp/${challengeId}`);
     }
   };
 
@@ -115,23 +85,24 @@ function NivelesPageContent() {
 
     try {
       await fadeOutLevelSound();
-      await signOut({ callbackUrl: "/login" });
+      await signOut({ callbackUrl: "/" });
     } finally {
       setIsSigningOut(false);
     }
   };
 
   const handleLevelSelect = (levelId: number) => {
-    const level = levels.find(l => l.id === levelId);
+    setSelectedLevel(levelId - 1); // Convertir número de nivel a índice
+    const level = levels.find(l => l.order === levelId);
     if (level?.unlocked) {
-      void navigateToExercise();
+      void navigateToExercise(level._id);
     }
   };
 
-  const handleChallengeSelect = (challengeId: number) => {
-    const challenge = challenges.find(c => c.id === challengeId);
+  const handleChallengeSelect = (challengeId: string) => {
+    const challenge = challenges.find(c => c._id === challengeId);
     if (challenge?.unlocked) {
-      void navigateToExercise();
+      void navigateToExercise(challengeId);
     }
   };
 
@@ -190,7 +161,7 @@ function NivelesPageContent() {
   );
 }
 
-export default function NivelesPage() {
+export default function HomeLevels() {
   return (
     <Suspense
       fallback={
