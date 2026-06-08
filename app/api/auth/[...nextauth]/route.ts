@@ -71,7 +71,7 @@ const handler = NextAuth({
       session.user.id = token.sub!;
       // Ensure role matches expected union type
       const role = token.role as string | undefined;
-      if (role === "DEPORTISTA" || role === "ENTRENADOR") {
+      if (role === "ADMIN" || role === "ESTUDIANTE") {
         session.user.role = role;
       } else {
         // fallback or undefined if role is unexpected

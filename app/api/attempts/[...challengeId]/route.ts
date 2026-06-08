@@ -2,12 +2,15 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
+import { NextRequest } from "next/server";
 
 export async function POST(
-  req: Request,
-  { params }: { params: { challengeId: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ challengeId: string[] }> }
 ) {
   try {
+    const { challengeId } = await params;
+
     // 1. Verificar autenticación
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -35,7 +38,7 @@ export async function POST(
       problem_id: problem_id,
       score: score,
       milliseconds: milliseconds,
-      challenge_id: params.challengeId,
+      challenge_id: challengeId[0],
       created_at: new Date()
     };
 
@@ -45,7 +48,7 @@ export async function POST(
     let status = await db.collection('challenge_status').findOne({
       user_id: userId,
       problem_id: problem_id,
-      challenge_id: params.challengeId
+      challenge_id: challengeId[0]
     });
 
     let intent_number = 1;
@@ -71,7 +74,7 @@ export async function POST(
         { 
           user_id: userId, 
           problem_id: problem_id,
-          challenge_id: params.challengeId 
+          challenge_id: challengeId[0] 
         },
         {
           $set: {
@@ -95,7 +98,7 @@ export async function POST(
       const newStatus = {
         user_id: userId,
         problem_id: problem_id,
-        challenge_id: params.challengeId,
+        challenge_id: challengeId[0],
         intent_number: intent_number,
         averageMilliseconds: averageMilliseconds,
         totalMilliseconds: totalMilliseconds,
@@ -111,7 +114,7 @@ export async function POST(
     const updatedStatus = await db.collection('challenge_status').findOne({
       user_id: userId,
       problem_id: problem_id,
-      challenge_id: params.challengeId
+      challenge_id: challengeId[0]
     });
 
     return Response.json({
