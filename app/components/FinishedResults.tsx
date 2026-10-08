@@ -2,7 +2,7 @@ import Image from "next/image";
 import React from "react";
 
 interface FinishedResultsProps {
-	stars: number;
+	stars?: number;
 	score: number;
 	totalQuestions: number;
 	averageTimeMs: number;
@@ -37,7 +37,7 @@ const FinishedResults: React.FC<FinishedResultsProps> = ({ stars, score, totalQu
 			<div className="absolute inset-0 bg-black/10 z-10" />
 			{/* Contenido */}
 			<div className="relative z-20 flex flex-col items-center justify-center gap-6 px-2 sm:px-4 py-6 w-full">
-				<h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 text-center drop-shadow-lg">¡Nivel completado!</h2>
+				<h2 className="text-2xl sm:text-3xl font-bold text-yellow-300 text-center drop-shadow-lg">¡Intento completado!</h2>
 				<div className="flex gap-2 justify-center">
 					{[1, 2, 3].map((i) => (
 						<Image
@@ -46,7 +46,7 @@ const FinishedResults: React.FC<FinishedResultsProps> = ({ stars, score, totalQu
 							alt="Estrella"
 							width={40}
 							height={40}
-							className={i <= stars ? "drop-shadow-md" : "opacity-30 grayscale"}
+							className={i <= (stars || 0) ? "drop-shadow-md" : "opacity-30 grayscale"}
 							style={{ height: 'auto' }}
 						/>
 					))}

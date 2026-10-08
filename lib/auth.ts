@@ -42,9 +42,9 @@ export const authOptions: NextAuthOptions = {
           }
 
           // ✅ Usuario autenticado exitosamente
+          console.log("USUARIO AUTENTICADO", user);
           return {
-            id: user._id.toString(),
-            name: user.name || user.email.split('@')[0],
+            id: String(user._id),
             email: user.email,
             role: user.role || "ESTUDIANTE", // Valor por defecto
           };
@@ -61,7 +61,6 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.email = user.email;
-        token.name = user.name;
       }
       return token;
     },
@@ -70,7 +69,6 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.role = token.role as "ADMIN" | "ESTUDIANTE";
         session.user.email = token.email as string;
-        session.user.name = token.name as string;
       }
       return session;
     },

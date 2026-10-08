@@ -7,17 +7,57 @@ import FinishedResults from "./FinishedResults";
 import { useSound } from "@/app/providers/SoundProvider";
 import NumericKeypad from "./NumericKeypad";
 import CountDown from "./CountDown";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import ExcerciseAdditionBasic from "./excercises/level01/ExcerciseAdditionBasic";
+// NOTA: asumo que estos tres componentes existen o los vas a crear siguiendo
+// el mismo patrón/carpetas que ExcerciseAdditionBasic. Ajusta las rutas/nombres
+// si en tu proyecto se llaman distinto.
+import ExcerciseSubtractionBasic from "./excercises/level01/ExcerciseSubtractionBasic";
+import ExcerciseMultiplicationBasic from "./excercises/level01/ExcerciseMultiplicationBasic";
+import ExcerciseDivisionBasic from "./excercises/level01/ExcerciseDivisionBasic";
 
-function generateProblem() {
-  // Generar 8 sumandos como en el original (números del 2 al 8)
-  const CANTIDAD_DIGITOS = 8;
-  const sumandos = Array.from({ length: CANTIDAD_DIGITOS }, () =>
-    Math.floor(Math.random() * 7) + 2
-  );
-  const correct = sumandos.reduce((prev, current) => prev + current, 0);
-  return { sumandos, correct };
+type AdditionProblem = { sumandos: number[]; correct: number };
+type BinaryOpProblem = { numeros: [number, number]; correct: number };
+type Problem = AdditionProblem | BinaryOpProblem;
+
+function generateProblem(keyLevel: string): Problem {  
+  if (keyLevel == "prob_add_01") {
+    // Generar 8 sumandos como en el original (números del 2 al 8)
+    const CANTIDAD_DIGITOS = 8;
+    const sumandos = Array.from({ length: CANTIDAD_DIGITOS }, () =>
+      Math.floor(Math.random() * 7) + 2
+    );
+    const correct = sumandos.reduce((prev, current) => prev + current, 0);
+    return { sumandos, correct };
+
+  } else if (keyLevel === "prob_sub_01" || keyLevel === "prob_sub_02") {
+    // Resta: dos números de un dígito (0-9), el primero siempre >= al segundo
+    let minuendo = Math.floor(Math.random() * 10);
+    let sustraendo = Math.floor(Math.random() * 10);
+    if (minuendo < sustraendo) {
+      [minuendo, sustraendo] = [sustraendo, minuendo];
+    }
+    const correct = minuendo - sustraendo;
+    return { numeros: [minuendo, sustraendo], correct };
+
+  } else if (keyLevel == "prob_mul_01") {
+    // Multiplicación: dos números de un dígito (0-9)
+    const factor1 = Math.floor(Math.random() * 10);
+    const factor2 = Math.floor(Math.random() * 10);
+    const correct = factor1 * factor2;
+    return { numeros: [factor1, factor2], correct };
+
+  } else if (keyLevel == "prob_div_01") {
+    // División: divisor y cociente de un dígito, dividendo = divisor * cociente
+    // (garantiza resultado entero exacto). Se evita divisor = 0.
+    const divisor = Math.floor(Math.random() * 9) + 1; // 1-9
+    const cociente = Math.floor(Math.random() * 10);   // 0-9
+    const dividendo = divisor * cociente;
+    return { numeros: [dividendo, divisor], correct: cociente };
+  }
+
+  throw new Error(`Nivel de desafío no soportado: ${keyLevel}`);
 }
 
 const TOTAL_QUESTIONS = 3;
@@ -31,11 +71,21 @@ function formatElapsedTime(timeMs: number) {
   return `${(timeMs / 1000).toFixed(timeMs >= 10000 ? 1 : 2)} s`;
 }
 
-function SumasPageContent({ challengeId }: { challengeId: string }) {
+function ExerciseAttemptPageContent({
+  challengeId,
+  levelId
+}: {
+  challengeId: string;
+  levelId: string;
+}) {
   const router = useRouter();
-  const { playResultSound, stopAllSounds, isMuted, toggleMute } = useSound();
-
+  const queryClient = useQueryClient();
+  const { stopAllSounds, isMuted, toggleMute } = useSound();
   const [questionIndex, setQuestionIndex] = useState(0);
+  // Generate a new random problem for each question, but not on every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const problem = useMemo(() => generateProblem(challengeId), [challengeId, questionIndex]);
+
   const [score, setScore] = useState(0);
   const [stars, setStars] = useState(0);
   const [averageTimeMs, setAverageTimeMs] = useState(0);
@@ -50,24 +100,31 @@ function SumasPageContent({ challengeId }: { challengeId: string }) {
   const answerTimesRef = useRef<number[]>([]);
   const questionStartTimeRef = useRef<number | null>(null);
 
-  const problem = useMemo(() => generateProblem(), [questionIndex]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const attempRegistrationMutation = useMutation({
-    mutationFn: async (data: { score: number; averageTimeMs: number; stars: number }) => {
+    mutationFn: async (data: { score: number; averageTimeMs: number; }) => {
+      console.log("DATA", challengeId, data);
       const res = await fetch(`/api/attempts/${challengeId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          levelId,
+        }),
       });
       if (!res.ok) {
         throw new Error("Failed to register attempt");
       }
       return res.json();
     },
-    onSuccess: () => {
-      console.log("Attempt registered successfully");
+    onSuccess: (resp) => {
+      console.log("Attempt registered successfully", resp);
+      if (typeof resp.status?.stars === "number") {
+        setStars(Math.max(0, Math.min(3, Math.floor(resp.status.stars))));
+      }
+      void queryClient.invalidateQueries({ queryKey: ["user-challenges"] });
+      void queryClient.invalidateQueries({ queryKey: ["user-levels"] });
     },
     onError: (error) => {
       console.error("Error registering attempt:", error);
@@ -83,7 +140,7 @@ function SumasPageContent({ challengeId }: { challengeId: string }) {
 
   const handleDigit = useCallback((digit: string) => {
     if (isCountdownActive || isSubmitted) return;
-    if (userAnswer.length < 4) { // Límite de 4 dígitos para sumas de 8 números
+    if (userAnswer.length < 4) { // Límite de 4 dígitos (cubre el máximo de nivel 0: sumas de 8 números)
       setUserAnswer(prev => prev + digit);
     }
   }, [isCountdownActive, isSubmitted, userAnswer.length]);
@@ -116,29 +173,31 @@ function SumasPageContent({ challengeId }: { challengeId: string }) {
       if (questionIndex + 1 >= TOTAL_QUESTIONS) {
         const finalScore = correct ? score + 1 : score;
         const avgTimeMs = updatedAnswerTimes.reduce((total, time) => total + time, 0) / updatedAnswerTimes.length;
-        const newStars = finalScore < TOTAL_QUESTIONS ? 1 : avgTimeMs > 20000 ? 2 : 3;
 
         setAverageTimeMs(avgTimeMs);
-        setStars(newStars);
         setFinished(true);
 
         attempRegistrationMutation.mutate({
           score: finalScore,
-          averageTimeMs: avgTimeMs,
-          stars: newStars,
+          averageTimeMs: avgTimeMs
         });
-
-        // Reproducir sonido según las estrellas obtenidas
-        playResultSound(newStars);
       } else {
         setQuestionIndex((i) => i + 1);
         setUserAnswer('');
         setIsSubmitted(false);
         setIsCorrect(null);
-        setCurrentResponseTimeMs(null);
+        setCurrentResponseTimeMs(null);        
       }
     }, 1500);
-  }, [isCountdownActive, isSubmitted, userAnswer, problem.correct, questionIndex, score, playResultSound]);
+  }, [
+    attempRegistrationMutation,
+    isCountdownActive,
+    isSubmitted,
+    userAnswer,
+    questionIndex,
+    problem,
+    score,
+  ]);
 
   function restart() {
     setQuestionIndex(0);
@@ -209,60 +268,51 @@ function SumasPageContent({ challengeId }: { challengeId: string }) {
       </header>
 
       {/* Ejercicio y teclado */}
-      <main className="flex-1 flex flex-col md:flex-row w-full pt-18 pb-0 md:pt-8 md:pb-0 gap-2 md:gap-0">
+      <main className="flex flex-col md:flex-row w-full pt-18 pb-0 md:pt-8 md:pb-0 gap-2 md:gap-0">
 
-        {/* Ejercicio */}
-        <section className="w-full md:w-3/5 flex flex-col px-4 md:px-0">
-          <div className="flex flex-row items-start w-full max-w-lg mx-auto mb-2">
-            {/* Número de ejercicio vertical */}
-            <div className="flex flex-col items-start justify-start mr-4 min-w-17.5">
-              <span className="text-md sm:text-lg text-slate-700 mb-1"><b>Ejercicio</b></span>
-              <span className="text-6xl sm:text-6xl text-black font-bold leading-none" style={{ fontFamily: 'var(--font-dotgothic)' }}>
-                {questionIndex + 1}<small className="text-xl px-2">/</small>{TOTAL_QUESTIONS}
-              </span>
-            </div>
-            {/* Área de suma */}
-            <div className="flex flex-col items-center flex-1">
-              <div className="flex flex-row items-end justify-center gap-2 sm:gap-4 mb-2 sm:mb-4 w-full">
-                <span className="text-4xl sm:text-6xl font-bold text-black pb-4 sm:pb-8 font-mono">+</span>
-                <div className="flex flex-col space-y-0.5 sm:space-y-1">
-                  {problem.sumandos.map((sumando, index) => (
-                    <div key={index} className="text-right">
-                      <span className="text-3xl sm:text-5xl text-black font-bold" style={{ fontFamily: 'var(--font-dotgothic)' }}>
-                        {isCountdownActive ? '?' : sumando}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Línea horizontal debajo de los sumandos */}
-              <div className="w-20 sm:w-32 h-1 bg-black mb-2 sm:mb-4 ml-8 sm:ml-16"></div>
-              {/* Totalizador estilo display calculadora */}
-              <div className="flex items-center space-x-2 sm:space-x-4 bg-linear-to-b from-[#e0e0e0] to-[#b6b6b6] px-4 py-3 rounded-lg border-2 border-black ml-8 sm:ml-16 shadow-inner min-w-30">
-                <span className="text-2xl sm:text-4xl font-bold text-black font-mono">=</span>
-                <div className="min-w-12 sm:min-w-24 text-right">
-                  <span className="text-2xl sm:text-4xl font-bold text-black font-mono">
-                    {isCountdownActive ? '?' : userAnswer || ' '}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        {challengeId === "prob_add_01" && (
+          <ExcerciseAdditionBasic
+            index={questionIndex}
+            problem={problem as AdditionProblem}
+            isCountdownActive={isCountdownActive}
+            totalQuestions={TOTAL_QUESTIONS}
+            userAnswer={userAnswer}
+          />
+        )}
+        {(challengeId === "prob_sub_01" || challengeId === "prob_sub_02") && (
+          <ExcerciseSubtractionBasic
+            index={questionIndex}
+            problem={problem as BinaryOpProblem}
+            isCountdownActive={isCountdownActive}
+            totalQuestions={TOTAL_QUESTIONS}
+            userAnswer={userAnswer}
+          />
+        )}
+        {challengeId === "prob_mul_01" && (
+          <ExcerciseMultiplicationBasic
+            index={questionIndex}
+            problem={problem as BinaryOpProblem}
+            isCountdownActive={isCountdownActive}
+            totalQuestions={TOTAL_QUESTIONS}
+            userAnswer={userAnswer}
+          />
+        )}
+        {challengeId === "prob_div_01" && (
+          <ExcerciseDivisionBasic
+            index={questionIndex}
+            problem={problem as BinaryOpProblem}
+            isCountdownActive={isCountdownActive}
+            totalQuestions={TOTAL_QUESTIONS}
+            userAnswer={userAnswer}
+          />
+        )}
 
-        {/* Teclado numérico */}
-        <section className="fixed w-full bottom-0 bg-black flex items-end md:items-center justify-center px-0 md:px-0 md:pb-0">
-          <div className="w-full max-w-md px-0">
-            <NumericKeypad
-              onDigit={handleDigit}
-              onDelete={handleDelete}
-              onSubmit={handleSubmit}
-              disabled={isCountdownActive || isSubmitted}
-            />
-          </div>
-        </section>
-
-
+        <NumericKeypad
+          onDigit={handleDigit}
+          onDelete={handleDelete}
+          onSubmit={handleSubmit}
+          disabled={isCountdownActive || isSubmitted}
+        />
       </main>
 
       {isCountdownActive && (
@@ -325,7 +375,13 @@ function SumasPageContent({ challengeId }: { challengeId: string }) {
   );
 }
 
-export default function ExcerciseAttemp({ challengeId }: { challengeId: string }) {
+export default function ExcerciseAttemp({
+  challengeId,
+  levelId
+}: {
+  challengeId: string;
+  levelId: string;
+}) {
   return (
     <Suspense
       fallback={
@@ -334,7 +390,10 @@ export default function ExcerciseAttemp({ challengeId }: { challengeId: string }
         </div>
       }
     >
-      <SumasPageContent challengeId={challengeId} />
+      <ExerciseAttemptPageContent 
+        challengeId={challengeId} 
+        levelId={levelId} />
+
     </Suspense>
   );
 }

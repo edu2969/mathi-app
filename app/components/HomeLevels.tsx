@@ -23,7 +23,7 @@ function NivelesPageContent() {
     toggleMute,
   } = useSound();  
 
-  const { data: levels, isLoading: isLoadingLevels } = useQuery<LevelsResponse[]>({
+  const { data: levels } = useQuery<LevelsResponse[]>({
     queryKey: ["user-levels"],
     queryFn: async () => {
       const res = await fetch("/api/levels");
@@ -37,7 +37,7 @@ function NivelesPageContent() {
     initialData: [],
   });
 
-  const { data: challenges, isLoading: isLoadingChallenges } = useQuery<ChallengesResponse[]>({
+  const { data: challenges } = useQuery<ChallengesResponse[]>({
     queryKey: ["user-challenges", selectedLevel],
     queryFn: async () => {
       if(levels.length === 0) {
@@ -72,7 +72,7 @@ function NivelesPageContent() {
     try {
       await fadeOutLevelSound();
     } finally {
-      router.push(`/attemp/${challengeId}`);
+      router.push(`/attempt/${levels[selectedLevel]._id}/${challengeId}`);
     }
   };
 
@@ -93,10 +93,6 @@ function NivelesPageContent() {
 
   const handleLevelSelect = (levelId: number) => {
     setSelectedLevel(levelId - 1); // Convertir número de nivel a índice
-    const level = levels.find(l => l.order === levelId);
-    if (level?.unlocked) {
-      void navigateToExercise(level._id);
-    }
   };
 
   const handleChallengeSelect = (challengeId: string) => {
@@ -137,7 +133,7 @@ function NivelesPageContent() {
       />
 
       {/* Grilla de desafíos, ocupa el resto */}
-      <ChallengeGrid
+      <ChallengeGrid        
         challenges={challenges}
         isNavigating={isNavigating}
         onChallengeSelect={handleChallengeSelect}

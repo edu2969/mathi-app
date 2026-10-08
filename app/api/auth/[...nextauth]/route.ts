@@ -16,11 +16,7 @@ const handler = NextAuth({
       },
 
       async authorize(credentials) {
-        console.log("credentials", credentials);
         const db = await connectDB();
-
-        console.log("db", db);
-
 
         const user = await db
           .collection("users")
@@ -59,11 +55,11 @@ const handler = NextAuth({
 
   callbacks: {
     async jwt({ token, user }) {
-      console.log("JWT callback called with token:", token, "and user:", user);
       if (user) {
         token.role = user.role;
+        token.id = user.id;
+        token.email = user.email;
       }
-
       return token;
     },
 

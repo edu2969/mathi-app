@@ -9,8 +9,8 @@ export default function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }:
   // Layout exacto del original: [1, 2, 3, 4, 5, 6, 7, 8, 9, "D", 0, "O"]
   const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, "D", 0, "O"];
 
-  return (
-    <div className="flex flex-row flex-wrap justify-center w-full h-full px-2 py-4 bg-[#222] sm:rounded-2xl shadow-inner border-black relative">
+  return (<section className="fixed w-full md:w-2/5 bottom-0 right-0 bg-black flex items-end md:items-center justify-center px-0 md:px-0 md:pb-0">    
+    <div className="flex flex-row flex-wrap justify-center w-full h-full px-2 py-4 bg-[#222] sm:rounded-2xl shadow-inner border-black relative md:max-w-xl md:ml-auto">
       {/* Efecto brillo superior */}
       <div className="absolute top-0 left-0 w-full h-3 bg-linear-to-b from-white/30 to-transparent rounded-t-2xl pointer-events-none" />
       {keys.map((key, index) => {
@@ -26,7 +26,7 @@ export default function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }:
               else onDigit(key.toString());
             }}
             className={`
-              w-[30%] h-16 m-[1.5%] text-white text-2xl font-bold text-center
+              w-[30%] h-12 m-[1.5%] text-white text-2xl font-bold text-center
               transition-all duration-200 shadow-lg
               ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
               ${isDelete ?
@@ -48,5 +48,6 @@ export default function NumericKeypad({ onDigit, onDelete, onSubmit, disabled }:
         );
       })}
     </div>
+  </section>
   );
 }
