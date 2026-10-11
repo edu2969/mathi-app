@@ -10,163 +10,259 @@ import { useQuery } from "@tanstack/react-query";
 import { ChallengesResponse, LevelsResponse } from "../types/types";
 
 function NivelesPageContent() {
-  const router = useRouter();
-  const [selectedLevel, setSelectedLevel] = useState(0); 
-  const [isNavigating, setIsNavigating] = useState(false);
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const {
-    fadeOutLevelSound,
-    isMuted,
-    isPlaying,
-    playLevelSound,
-    setCurrentLevel,
-    toggleMute,
-  } = useSound();  
+    const router = useRouter();
 
-  const { data: levels } = useQuery<LevelsResponse[]>({
-    queryKey: ["user-levels"],
-    queryFn: async () => {
-      const res = await fetch("/api/levels");
-        if (!res.ok) {
-            throw new Error("Error fetching levels");
+    const [selectedLevel, setSelectedLevel] = useState(0);
+    const [isNavigating, setIsNavigating] = useState(false);
+    const [isSigningOut, setIsSigningOut] = useState(false);
+
+    const {
+        fadeOutLevelSound,
+        isMuted,
+        isPlaying,
+        playLevelSound,
+        setCurrentLevel,
+        toggleMute,
+    } = useSound();
+
+    const { data: levels = [] } = useQuery<LevelsResponse[]>({
+        queryKey: ["user-levels"],
+        queryFn: async () => {
+            const res = await fetch("/api/levels");
+
+            if (!res.ok) {
+                throw new Error("Error fetching levels");
+            }
+
+            const data = await res.json();
+            return data.levels;
+        },
+        initialData: [],
+    });
+
+    const { data: challenges = [] } = useQuery<ChallengesResponse[]>({
+        queryKey: ["user-challenges", levels[selectedLevel]?._id],
+        queryFn: async () => {
+            const levelId = levels[selectedLevel]?._id;
+
+            if (!levelId) {
+                return [];
+            }
+
+            const res = await fetch(`/api/challenges/byId/${levelId}`);
+
+            if (!res.ok) {
+                throw new Error("Error fetching challenges");
+            }
+
+            const data = await res.json();
+            console.log("Fetched challenges:", data.challenges);
+            return data.challenges;
+        },
+        initialData: [],
+        enabled: levels.length > 0 && !!levels[selectedLevel]?._id,
+    });
+
+    // Actualizar música al cambiar de nivel
+    useEffect(() => {
+        if (!levels.length || !levels[selectedLevel]) {
+            return;
         }
-        const data = await res.json();
-        console.log("Fetched levels:", data);
-        return data.levels;
-    },
-    initialData: [],
-  });
 
-  const { data: challenges } = useQuery<ChallengesResponse[]>({
-    queryKey: ["user-challenges", selectedLevel],
-    queryFn: async () => {
-      if(levels.length === 0) {
-        return [];
-      }
-      const res = await fetch(`/api/challenges/byId/${levels[selectedLevel]?._id}`);
-        if (!res.ok) {
-            throw new Error("Error fetching challenges");
+        const newLevel = selectedLevel + 1;
+
+        setCurrentLevel(newLevel);
+        playLevelSound(newLevel);
+    }, [
+        levels.length,
+        selectedLevel,
+        playLevelSound,
+        setCurrentLevel,
+    ]);
+
+    const navigateToExercise = async (challengeId: string) => {
+        const levelId = levels[selectedLevel]?._id;
+
+        if (isNavigating || !levelId) {
+            return;
         }
-        const data = await res.json();
-        console.log("Fetched challenges:", data);
-        return data.challenges;
-    },
-    initialData: [],
-    enabled: levels.length > 0,
-  });
 
-  // Efecto para cambiar la música cuando cambia el nivel seleccionado
-  useEffect(() => {
-    const newLevel = (selectedLevel ?? 0) + 1; // Convertir índice a número de nivel
-    setCurrentLevel(newLevel);
-    playLevelSound(newLevel);
-  }, [playLevelSound, selectedLevel, setCurrentLevel]);
+        setIsNavigating(true);
 
-  const navigateToExercise = async (challengeId: string) => {
-    if (isNavigating) {
-      return;
-    }
+        try {
+            await fadeOutLevelSound();
+        } finally {
+            router.push(`/attempt/${levelId}/${challengeId}`);
+        }
+    };
 
-    setIsNavigating(true);
+    const handleSignOut = async () => {
+        if (isNavigating || isSigningOut) {
+            return;
+        }
 
-    try {
-      await fadeOutLevelSound();
-    } finally {
-      router.push(`/attempt/${levels[selectedLevel]._id}/${challengeId}`);
-    }
-  };
+        setIsSigningOut(true);
 
-  const handleSignOut = async () => {
-    if (isNavigating || isSigningOut) {
-      return;
-    }
+        try {
+            await fadeOutLevelSound();
+            await signOut({ callbackUrl: "/" });
+        } finally {
+            setIsSigningOut(false);
+        }
+    };
 
-    setIsSigningOut(true);
+    const handleLevelSelect = (levelId: number) => {
+        const nextIndex = levelId - 1;
 
-    try {
-      await fadeOutLevelSound();
-      await signOut({ callbackUrl: "/" });
-    } finally {
-      setIsSigningOut(false);
-    }
-  };
+        if (nextIndex < 0 || nextIndex >= levels.length) {
+            return;
+        }
 
-  const handleLevelSelect = (levelId: number) => {
-    setSelectedLevel(levelId - 1); // Convertir número de nivel a índice
-  };
+        setSelectedLevel(nextIndex);
+    };
 
-  const handleChallengeSelect = (challengeId: string) => {
-    const challenge = challenges.find(c => c._id === challengeId);
-    if (challenge?.unlocked) {
-      void navigateToExercise(challengeId);
-    }
-  };
+    const handleChallengeSelect = (challengeId: string) => {
+        const challenge = challenges.find(
+            (item) => item._id === challengeId
+        );
 
-  return (
-    <div
-      className="h-dvh md:h-screen flex flex-col relative overflow-hidden"
-      style={{
-        backgroundImage: "url('/bg-vertical.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
-      {/* Botón de control de audio */}
-      <button
-        onClick={toggleMute}
-        className="fixed top-4 right-4 z-40 bg-black/50 backdrop-blur-sm p-3 rounded-full transition-all duration-200 hover:bg-black/70"
-        aria-label="Control de audio"
-      >
-        <span className="text-white text-xl">
-          {isMuted ? "🔇" : isPlaying ? "🔊" : "🔉"}
-        </span>
-      </button>
+        if (challenge?.unlocked && !isNavigating) {
+            void navigateToExercise(challengeId);
+        }
+    };
 
-      {/* Carrusel de nivel seleccionado, ocupa 50vh */}
-      <LevelCarrouselSelector
-        levels={levels}
-        isNavigating={isNavigating}
-        playLevelSound={playLevelSound}
-        setCurrentLevel={setCurrentLevel}
-        onLevelSelect={handleLevelSelect}
-      />
+    return (
+        <div
+            className="
+                relative flex h-dvh w-full
+                flex-col overflow-hidden
+                lg:flex-row
+            "
+            style={{
+                backgroundImage: "url('/bg-vertical.png')",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+            }}
+        >
+            {/* Control de audio */}
+            <button
+                type="button"
+                onClick={toggleMute}
+                className="
+                    fixed right-4 top-4 z-40
+                    rounded-full bg-black/50 p-3
+                    backdrop-blur-sm
+                    transition-colors duration-200
+                    hover:bg-black/70
+                "
+                aria-label="Control de audio"
+                aria-pressed={isMuted}
+            >
+                <span className="text-xl text-white">
+                    {isMuted ? "🔇" : isPlaying ? "🔊" : "🔉"}
+                </span>
+            </button>
 
-      {/* Grilla de desafíos, ocupa el resto */}
-      <ChallengeGrid        
-        challenges={challenges}
-        isNavigating={isNavigating}
-        onChallengeSelect={handleChallengeSelect}
-      />
+            {/* Selector de niveles
+                Móvil: parte superior.
+                Desktop: columna izquierda. */}
+            <aside
+                className="
+                    flex w-full shrink-0
+                    h-[44%] min-h-0
+                    items-center justify-center
+                    px-2 pt-2
 
-      {/* Botón salir siempre visible y sobre todo */}
-      <button
-        type="button"
-        onClick={() => {
-          void handleSignOut();
-        }}
-        disabled={isSigningOut}
-        className="fixed right-4 bottom-4 z-50 flex flex-col items-center rounded-2xl bg-black/45 px-3 py-2 text-white backdrop-blur-sm transition-all duration-200 hover:bg-black/65 disabled:cursor-not-allowed disabled:opacity-70 shadow-lg"
-        style={{ touchAction: 'manipulation' }}
-        aria-label="Salir"
-      >
-        <span className="text-3xl leading-none">⏻</span>
-        <span className="text-[10px] font-medium uppercase tracking-[0.2em]">Salir</span>
-      </button>
-    </div>
-  );
+                    lg:h-full
+                    lg:w-[28%]
+                    xl:w-[25%]
+                    lg:px-3 lg:py-6
+                "
+            >
+                <div className="flex h-full w-full min-h-0 items-center justify-center">
+                    <LevelCarrouselSelector
+                        levels={levels}
+                        isNavigating={isNavigating}
+                        playLevelSound={playLevelSound}
+                        setCurrentLevel={setCurrentLevel}
+                        onLevelSelect={handleLevelSelect}
+                    />
+                </div>
+            </aside>
+
+            {/* Grilla de desafíos
+                Móvil: parte inferior.
+                Desktop: ocupa el ancho restante. */}
+<main
+    className="
+        flex min-h-0 min-w-0
+        w-full flex-1
+        items-center justify-center
+        overflow-hidden
+        px-2 pb-16 pt-1
+
+        lg:px-4 lg:py-3
+    "
+>
+                <ChallengeGrid
+                    challenges={challenges}
+                    isNavigating={isNavigating}
+                    onChallengeSelect={handleChallengeSelect}
+                />
+            </main>
+
+            {/* Botón salir */}
+            <button
+                type="button"
+                onClick={() => {
+                    void handleSignOut();
+                }}
+                disabled={isSigningOut || isNavigating}
+                className="
+                    fixed bottom-4 right-4 z-50
+                    flex flex-col items-center
+                    rounded-2xl bg-black/45
+                    px-3 py-2 text-white
+                    shadow-lg backdrop-blur-sm
+                    transition-colors duration-200
+                    hover:bg-black/65
+                    disabled:cursor-not-allowed
+                    disabled:opacity-70
+                "
+                style={{ touchAction: "manipulation" }}
+                aria-label="Salir"
+            >
+                <span className="text-3xl leading-none">⏻</span>
+                <span className="text-[10px] font-medium uppercase tracking-[0.2em]">
+                    Salir
+                </span>
+            </button>
+        </div>
+    );
 }
 
 export default function HomeLevels() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex flex-1 items-center justify-center bg-linear-to-b from-green-800 to-green-950">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-yellow-400 border-t-transparent" />
-        </div>
-      }
-    >
-      <NivelesPageContent />
-    </Suspense>
-  );
+    return (
+        <Suspense
+            fallback={
+                <div
+                    className="
+                        flex h-dvh items-center justify-center
+                        bg-linear-to-b from-green-800 to-green-950
+                    "
+                >
+                    <div
+                        className="
+                            h-10 w-10 animate-spin rounded-full
+                            border-4 border-yellow-400
+                            border-t-transparent
+                        "
+                    />
+                </div>
+            }
+        >
+            <NivelesPageContent />
+        </Suspense>
+    );
 }

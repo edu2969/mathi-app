@@ -1,7 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  Suspense,
+} from "react";
 import Image from "next/image";
 import FinishedResults from "./FinishedResults";
 import { useSound } from "@/app/providers/SoundProvider";
@@ -9,61 +16,322 @@ import NumericKeypad from "./NumericKeypad";
 import CountDown from "./CountDown";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+
 import ExcerciseAdditionBasic from "./excercises/level01/ExcerciseAdditionBasic";
-// NOTA: asumo que estos tres componentes existen o los vas a crear siguiendo
-// el mismo patrón/carpetas que ExcerciseAdditionBasic. Ajusta las rutas/nombres
-// si en tu proyecto se llaman distinto.
 import ExcerciseSubtractionBasic from "./excercises/level01/ExcerciseSubtractionBasic";
 import ExcerciseMultiplicationBasic from "./excercises/level01/ExcerciseMultiplicationBasic";
 import ExcerciseDivisionBasic from "./excercises/level01/ExcerciseDivisionBasic";
+import ExcerciseDoubles from "./excercises/level01/ExcerciseDoubles";
+import ExcerciseHalf from "./excercises/level01/ExcerciseHalf";
 
-type AdditionProblem = { sumandos: number[]; correct: number };
-type BinaryOpProblem = { numeros: [number, number]; correct: number };
+// ============================================================
+// TIPOS
+// ============================================================
+
+type AdditionProblem = {
+  sumandos: number[];
+  correct: number;
+};
+
+type BinaryOpProblem = {
+  numeros: [number, number];
+  correct: number;
+};
+
 type Problem = AdditionProblem | BinaryOpProblem;
 
-function generateProblem(keyLevel: string): Problem {  
-  if (keyLevel == "prob_add_01") {
-    // Generar 8 sumandos como en el original (números del 2 al 8)
-    const CANTIDAD_DIGITOS = 8;
-    const sumandos = Array.from({ length: CANTIDAD_DIGITOS }, () =>
-      Math.floor(Math.random() * 7) + 2
-    );
-    const correct = sumandos.reduce((prev, current) => prev + current, 0);
-    return { sumandos, correct };
+// ============================================================
+// FUNCIONES AUXILIARES PARA GENERAR PROBLEMAS
+// ============================================================
 
-  } else if (keyLevel === "prob_sub_01" || keyLevel === "prob_sub_02") {
-    // Resta: dos números de un dígito (0-9), el primero siempre >= al segundo
-    let minuendo = Math.floor(Math.random() * 10);
-    let sustraendo = Math.floor(Math.random() * 10);
-    if (minuendo < sustraendo) {
-      [minuendo, sustraendo] = [sustraendo, minuendo];
-    }
-    const correct = minuendo - sustraendo;
-    return { numeros: [minuendo, sustraendo], correct };
+const randomInt = (min: number, max: number): number =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
 
-  } else if (keyLevel == "prob_mul_01") {
-    // Multiplicación: dos números de un dígito (0-9)
-    const factor1 = Math.floor(Math.random() * 10);
-    const factor2 = Math.floor(Math.random() * 10);
-    const correct = factor1 * factor2;
-    return { numeros: [factor1, factor2], correct };
+const pick = <T,>(values: T[]): T =>
+  values[randomInt(0, values.length - 1)];
 
-  } else if (keyLevel == "prob_div_01") {
-    // División: divisor y cociente de un dígito, dividendo = divisor * cociente
-    // (garantiza resultado entero exacto). Se evita divisor = 0.
-    const divisor = Math.floor(Math.random() * 9) + 1; // 1-9
-    const cociente = Math.floor(Math.random() * 10);   // 0-9
-    const dividendo = divisor * cociente;
-    return { numeros: [dividendo, divisor], correct: cociente };
-  }
-
-  throw new Error(`Nivel de desafío no soportado: ${keyLevel}`);
+function createAddition(sumandos: number[]): AdditionProblem {
+  return {
+    sumandos,
+    correct: sumandos.reduce((total, value) => total + value, 0),
+  };
 }
+
+function createBinary(
+  a: number,
+  b: number,
+  correct: number,
+): BinaryOpProblem {
+  return {
+    numeros: [a, b],
+    correct,
+  };
+}
+
+// ============================================================
+// GENERADOR DE PROBLEMAS
+// Identificadores basados en el JSON de desafíos
+// ============================================================
+
+function generateProblem(keyLevel: string): Problem {
+  switch (keyLevel) {
+    // --------------------------------------------------------
+    // SUMAS
+    // --------------------------------------------------------
+
+    case "prob_add_1": {
+      // Sumatoria de dos dígitos.
+      const a = randomInt(2, 9);
+      const b = randomInt(2, 9);
+
+      return createAddition([a, b]);
+    }
+
+    case "prob_add_2": {
+      // Suma de ocho dígitos.
+      const sumandos = Array.from(
+        { length: 8 },
+        () => randomInt(2, 8),
+      );
+
+      return createAddition(sumandos);
+    }
+
+    case "prob_add_3": {
+      // Sumatoria entre centenas.
+      const a = randomInt(100, 999);
+      const b = randomInt(100, 999);
+
+      return createAddition([a, b]);
+    }
+
+    case "prob_add_4": {
+      // Sumar decenas, centenas o millares exactos.
+      const a = randomInt(2, 999);
+      const b = pick([10, 100, 1000]);
+
+      return createAddition([a, b]);
+    }
+
+    case "prob_add_5": {
+      // Sumar 99 o 999 mediante compensación.
+      const a = randomInt(10, 999);
+      const b = pick([99, 999]);
+
+      return createAddition([a, b]);
+    }
+
+    // --------------------------------------------------------
+    // RESTAS
+    // --------------------------------------------------------
+
+    case "prob_sub_1": {
+      // Resta de dos dígitos sin resultado negativo.
+      const minuendo = randomInt(0, 9);
+      const sustraendo = randomInt(0, minuendo);
+
+      return createBinary(
+        minuendo,
+        sustraendo,
+        minuendo - sustraendo,
+      );
+    }
+
+    case "prob_sub_2": {
+      // Resta entre números de dos o tres cifras.
+      const minuendo = randomInt(10, 999);
+      const sustraendo = randomInt(0, minuendo);
+
+      return createBinary(
+        minuendo,
+        sustraendo,
+        minuendo - sustraendo,
+      );
+    }
+
+    case "prob_sub_3": {
+      // Restar 999 equivale a restar 1000 y sumar 1.
+      const minuendo = randomInt(1000, 9999);
+
+      return createBinary(
+        minuendo,
+        999,
+        minuendo - 999,
+      );
+    }
+
+    // --------------------------------------------------------
+    // MULTIPLICACIONES
+    // --------------------------------------------------------
+
+    case "prob_mul_1": {
+      // Dobles de un dígito.
+      const n = randomInt(0, 9);
+
+      return createBinary(n, 2, n * 2);
+    }
+
+    case "prob_mul_2": {
+      // Dobles de números hasta cinco.
+      const n = randomInt(0, 5);
+
+      return createBinary(n, 2, n * 2);
+    }
+
+    case "prob_mul_3": {
+      // Dobles de números de dos cifras.
+      const n = randomInt(10, 49);
+
+      return createBinary(n, 2, n * 2);
+    }
+
+    case "prob_mul_4": {
+      // Dobles de números de dos cifras terminados en 6-9.
+      const decenas = randomInt(1, 9);
+      const unidades = randomInt(6, 9);
+      const n = decenas * 10 + unidades;
+
+      return createBinary(n, 2, n * 2);
+    }
+
+    case "prob_mul_5": {
+      // Tablas de multiplicar del 1 al 10.
+      const a = randomInt(1, 10);
+      const b = randomInt(1, 10);
+
+      return createBinary(a, b, a * b);
+    }
+
+    case "prob_mul_6": {
+      // Número de dos cifras por un dígito.
+      const a = randomInt(10, 99);
+      const b = randomInt(2, 9);
+
+      return createBinary(a, b, a * b);
+    }
+
+    case "prob_mul_7": {
+      // Multiplicar por 10 o 100.
+      const a = randomInt(1, 999);
+      const b = pick([10, 100]);
+
+      return createBinary(a, b, a * b);
+    }
+
+    case "prob_mul_8": {
+      // Multiplicar por 25.
+      const a = randomInt(1, 40);
+
+      return createBinary(a, 25, a * 25);
+    }
+
+    // --------------------------------------------------------
+    // DIVISIONES
+    // --------------------------------------------------------
+
+    case "prob_div_1": {
+      // División exacta con números pequeños.
+      const divisor = randomInt(1, 9);
+      const cociente = randomInt(1, 9);
+      const dividendo = divisor * cociente;
+
+      return createBinary(dividendo, divisor, cociente);
+    }
+
+    case "prob_div_2": {
+      // Divisiones exactas basadas en las tablas.
+      const divisor = randomInt(2, 10);
+      const cociente = randomInt(1, 10);
+      const dividendo = divisor * cociente;
+
+      return createBinary(dividendo, divisor, cociente);
+    }
+
+    case "prob_div_3": {
+      // Mitades de números pares.
+      const dividendo = randomInt(1, 500) * 2;
+
+      return createBinary(
+        dividendo,
+        2,
+        dividendo / 2,
+      );
+    }
+
+    case "prob_div_4": {
+      // División exacta por tres.
+      const cociente = randomInt(1, 99);
+      const dividendo = cociente * 3;
+
+      return createBinary(dividendo, 3, cociente);
+    }
+
+    case "prob_div_5": {
+      // División por potencias de diez.
+      const divisor = pick([10, 100]);
+      const cociente = randomInt(1, 999);
+      const dividendo = cociente * divisor;
+
+      return createBinary(dividendo, divisor, cociente);
+    }
+
+    case "prob_div_6": {
+      // División exacta por cinco.
+      const cociente = randomInt(1, 199);
+      const dividendo = cociente * 5;
+
+      return createBinary(dividendo, 5, cociente);
+    }
+
+    case "prob_div_7": {
+      // División exacta por 25.
+      const cociente = randomInt(1, 40);
+      const dividendo = cociente * 25;
+
+      return createBinary(dividendo, 25, cociente);
+    }
+
+    case "prob_div_8": {
+      // División exacta por 90.
+      const cociente = randomInt(1, 99);
+      const dividendo = cociente * 90;
+
+      return createBinary(dividendo, 90, cociente);
+    }
+
+    case "prob_div_9": {
+      // División exacta por 9, 99 o 999.
+      const divisor = pick([9, 99, 999]);
+      const cociente = randomInt(1, 9);
+      const dividendo = divisor * cociente;
+
+      return createBinary(dividendo, divisor, cociente);
+    }
+
+    case "prob_div_10": {
+      // División exacta por centenas o millares.
+      const divisor = pick([100, 200, 300, 400, 500, 1000]);
+      const cociente = randomInt(1, 99);
+      const dividendo = divisor * cociente;
+
+      return createBinary(dividendo, divisor, cociente);
+    }
+
+    default:
+      throw new Error(
+        `Nivel de desafío no soportado: ${keyLevel}`,
+      );
+  }
+}
+
+// ============================================================
+// CONSTANTES Y FORMATO
+// ============================================================
 
 const TOTAL_QUESTIONS = 3;
 const COUNTDOWN_STEPS = ["3", "2", "1", "Go!"];
 
-function formatElapsedTime(timeMs: number) {
+function formatElapsedTime(timeMs: number): string {
   if (timeMs < 1000) {
     return `${Math.round(timeMs)} ms`;
   }
@@ -71,38 +339,52 @@ function formatElapsedTime(timeMs: number) {
   return `${(timeMs / 1000).toFixed(timeMs >= 10000 ? 1 : 2)} s`;
 }
 
+// ============================================================
+// PÁGINA DEL INTENTO
+// ============================================================
+
 function ExerciseAttemptPageContent({
   challengeId,
-  levelId
+  levelId,
 }: {
   challengeId: string;
   levelId: string;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { stopAllSounds, isMuted, toggleMute } = useSound();
-  const [questionIndex, setQuestionIndex] = useState(0);
-  // Generate a new random problem for each question, but not on every render.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const problem = useMemo(() => generateProblem(challengeId), [challengeId, questionIndex]);
 
+  const { stopAllSounds, isMuted, toggleMute } = useSound();
+
+  const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [stars, setStars] = useState(0);
   const [averageTimeMs, setAverageTimeMs] = useState(0);
-  const [userAnswer, setUserAnswer] = useState('');
+  const [userAnswer, setUserAnswer] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [finished, setFinished] = useState(false);
-
   const [isCountdownActive, setIsCountdownActive] = useState(true);
-  const [currentResponseTimeMs, setCurrentResponseTimeMs] = useState<number | null>(null);
+  const [currentResponseTimeMs, setCurrentResponseTimeMs] =
+    useState<number | null>(null);
 
   const answerTimesRef = useRef<number[]>([]);
   const questionStartTimeRef = useRef<number | null>(null);
 
-  const attempRegistrationMutation = useMutation({
-    mutationFn: async (data: { score: number; averageTimeMs: number; }) => {
-      console.log("DATA", challengeId, data);
+  // Genera un problema nuevo al cambiar de pregunta o desafío.
+  const problem = useMemo(
+    () => generateProblem(challengeId),
+    [challengeId, questionIndex],
+  );
+
+  // ----------------------------------------------------------
+  // REGISTRO DEL INTENTO
+  // ----------------------------------------------------------
+
+  const attemptRegistrationMutation = useMutation({
+    mutationFn: async (data: {
+      score: number;
+      averageTimeMs: number;
+    }) => {
       const res = await fetch(`/api/attempts/${challengeId}`, {
         method: "POST",
         headers: {
@@ -113,84 +395,128 @@ function ExerciseAttemptPageContent({
           levelId,
         }),
       });
+
       if (!res.ok) {
         throw new Error("Failed to register attempt");
       }
+
       return res.json();
     },
+
     onSuccess: (resp) => {
-      console.log("Attempt registered successfully", resp);
       if (typeof resp.status?.stars === "number") {
-        setStars(Math.max(0, Math.min(3, Math.floor(resp.status.stars))));
+        setStars(
+          Math.max(0, Math.min(3, Math.floor(resp.status.stars))),
+        );
       }
-      void queryClient.invalidateQueries({ queryKey: ["user-challenges"] });
-      void queryClient.invalidateQueries({ queryKey: ["user-levels"] });
+
+      void queryClient.invalidateQueries({
+        queryKey: ["user-challenges"],
+      });
+
+      void queryClient.invalidateQueries({
+        queryKey: ["user-levels"],
+      });
     },
+
     onError: (error) => {
       console.error("Error registering attempt:", error);
     },
   });
 
-  // Start timing when countdown finishes and question is ready
+  // ----------------------------------------------------------
+  // CRONÓMETRO DE RESPUESTA
+  // ----------------------------------------------------------
+
   useEffect(() => {
     if (!isCountdownActive && !finished && !isSubmitted) {
       questionStartTimeRef.current = performance.now();
     }
-  }, [finished, isCountdownActive, isSubmitted, questionIndex]);
+  }, [
+    finished,
+    isCountdownActive,
+    isSubmitted,
+    questionIndex,
+  ]);
 
-  const handleDigit = useCallback((digit: string) => {
-    if (isCountdownActive || isSubmitted) return;
-    if (userAnswer.length < 4) { // Límite de 4 dígitos (cubre el máximo de nivel 0: sumas de 8 números)
-      setUserAnswer(prev => prev + digit);
-    }
-  }, [isCountdownActive, isSubmitted, userAnswer.length]);
+  // ----------------------------------------------------------
+  // TECLADO NUMÉRICO
+  // ----------------------------------------------------------
+
+  const handleDigit = useCallback(
+    (digit: string) => {
+      if (isCountdownActive || isSubmitted) return;
+
+      // Hasta cuatro dígitos de respuesta.
+      if (userAnswer.length < 4) {
+        setUserAnswer((prev) => prev + digit);
+      }
+    },
+    [isCountdownActive, isSubmitted, userAnswer.length],
+  );
 
   const handleDelete = useCallback(() => {
     if (isCountdownActive || isSubmitted) return;
-    setUserAnswer(prev => prev.slice(0, -1));
+
+    setUserAnswer((prev) => prev.slice(0, -1));
   }, [isCountdownActive, isSubmitted]);
 
   const handleSubmit = useCallback(() => {
-    if (isCountdownActive || isSubmitted || !userAnswer) return;
+    if (isCountdownActive || isSubmitted || !userAnswer) {
+      return;
+    }
 
     setIsSubmitted(true);
+
     const responseTimeMs = questionStartTimeRef.current
       ? performance.now() - questionStartTimeRef.current
       : 0;
-    const updatedAnswerTimes = [...answerTimesRef.current, responseTimeMs];
+
+    const updatedAnswerTimes = [
+      ...answerTimesRef.current,
+      responseTimeMs,
+    ];
+
     answerTimesRef.current = updatedAnswerTimes;
 
-    const correct = parseInt(userAnswer) === problem.correct;
+    const correct = Number(userAnswer) === problem.correct;
+
     setIsCorrect(correct);
     setCurrentResponseTimeMs(responseTimeMs);
 
+    const nextScore = correct ? score + 1 : score;
+
     if (correct) {
-      setScore((s) => s + 1);
+      setScore(nextScore);
     }
 
-    // Move to next question after delay
-    setTimeout(() => {
+    // Mostrar feedback antes de avanzar.
+    window.setTimeout(() => {
       if (questionIndex + 1 >= TOTAL_QUESTIONS) {
-        const finalScore = correct ? score + 1 : score;
-        const avgTimeMs = updatedAnswerTimes.reduce((total, time) => total + time, 0) / updatedAnswerTimes.length;
+        const avgTimeMs =
+          updatedAnswerTimes.reduce(
+            (total, time) => total + time,
+            0,
+          ) / updatedAnswerTimes.length;
 
+        setScore(nextScore);
         setAverageTimeMs(avgTimeMs);
         setFinished(true);
 
-        attempRegistrationMutation.mutate({
-          score: finalScore,
-          averageTimeMs: avgTimeMs
+        attemptRegistrationMutation.mutate({
+          score: nextScore,
+          averageTimeMs: avgTimeMs,
         });
       } else {
-        setQuestionIndex((i) => i + 1);
-        setUserAnswer('');
+        setQuestionIndex((index) => index + 1);
+        setUserAnswer("");
         setIsSubmitted(false);
         setIsCorrect(null);
-        setCurrentResponseTimeMs(null);        
+        setCurrentResponseTimeMs(null);
       }
     }, 1500);
   }, [
-    attempRegistrationMutation,
+    attemptRegistrationMutation,
     isCountdownActive,
     isSubmitted,
     userAnswer,
@@ -199,32 +525,40 @@ function ExerciseAttemptPageContent({
     score,
   ]);
 
-  function restart() {
+  // ----------------------------------------------------------
+  // REINICIAR Y SALIR
+  // ----------------------------------------------------------
+
+  const restart = useCallback(() => {
     setQuestionIndex(0);
     setScore(0);
     setStars(0);
     setAverageTimeMs(0);
-    setUserAnswer('');
+    setUserAnswer("");
     setIsSubmitted(false);
     setIsCorrect(null);
     setFinished(false);
     setIsCountdownActive(true);
     setCurrentResponseTimeMs(null);
+
     answerTimesRef.current = [];
     questionStartTimeRef.current = null;
-  }
+  }, []);
 
   const handleRetry = useCallback(() => {
     stopAllSounds();
     restart();
-  }, [stopAllSounds]);
+  }, [stopAllSounds, restart]);
 
   const handleBackToLevels = useCallback(() => {
     stopAllSounds();
     router.push("/levels");
   }, [router, stopAllSounds]);
 
-  // Finished screen
+  // ----------------------------------------------------------
+  // RESULTADOS FINALES
+  // ----------------------------------------------------------
+
   if (finished) {
     return (
       <FinishedResults
@@ -238,12 +572,23 @@ function ExerciseAttemptPageContent({
     );
   }
 
+  // ----------------------------------------------------------
+  // RENDERIZADO DEL EJERCICIO
+  // ----------------------------------------------------------
+
+  const exerciseProps = {
+    index: questionIndex,
+    isCountdownActive,
+    totalQuestions: TOTAL_QUESTIONS,
+    userAnswer,
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#b6d7a8] relative">
-      {/* Top bar - header transparente */}
+      {/* Barra superior */}
       <header className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-2 sm:px-6 py-3 sm:py-4 bg-transparent">
         <button
-          onClick={() => router.push('/levels')}
+          onClick={handleBackToLevels}
           className="flex items-center gap-2 text-xs sm:text-sm font-medium text-black hover:text-white transition-colors"
         >
           <Image
@@ -252,60 +597,75 @@ function ExerciseAttemptPageContent({
             width={42}
             height={42}
             className="drop-shadow-lg w-12 h-12"
-            style={{ height: 'auto' }}
+            style={{ height: "auto" }}
           />
+
           <span className="text-lg sm:text-2xl">Salir</span>
         </button>
-        {/* Botón de control de audio */}
+
         <button
           onClick={toggleMute}
+          aria-label={isMuted ? "Activar sonido" : "Silenciar"}
           className="bg-black/50 backdrop-blur-sm p-2 sm:p-3 rounded-full transition-all duration-200 hover:bg-black/70"
         >
           <span className="text-white text-xl">
-            {isMuted ? '🔇' : '🔉'}
+            {isMuted ? "🔇" : "🔉"}
           </span>
         </button>
       </header>
 
       {/* Ejercicio y teclado */}
       <main className="flex flex-col md:flex-row w-full pt-18 pb-0 md:pt-8 md:pb-0 gap-2 md:gap-0">
-
-        {challengeId === "prob_add_01" && (
+        {/* SUMAS: prob_add_1 a prob_add_5 */}
+        {challengeId.startsWith("prob_add_") && (
           <ExcerciseAdditionBasic
-            index={questionIndex}
+            {...exerciseProps}
             problem={problem as AdditionProblem}
-            isCountdownActive={isCountdownActive}
-            totalQuestions={TOTAL_QUESTIONS}
-            userAnswer={userAnswer}
           />
         )}
-        {(challengeId === "prob_sub_01" || challengeId === "prob_sub_02") && (
+
+        {/* RESTAS: prob_sub_1 a prob_sub_3 */}
+        {challengeId.startsWith("prob_sub_") && (
           <ExcerciseSubtractionBasic
-            index={questionIndex}
+            {...exerciseProps}
             problem={problem as BinaryOpProblem}
-            isCountdownActive={isCountdownActive}
-            totalQuestions={TOTAL_QUESTIONS}
-            userAnswer={userAnswer}
           />
         )}
-        {challengeId === "prob_mul_01" && (
-          <ExcerciseMultiplicationBasic
-            index={questionIndex}
+
+        {/* DOBLES: prob_mul_1 */}
+        {challengeId === "prob_mul_1" && (
+          <ExcerciseDoubles
+            {...exerciseProps}
+            digits={1}
             problem={problem as BinaryOpProblem}
-            isCountdownActive={isCountdownActive}
-            totalQuestions={TOTAL_QUESTIONS}
-            userAnswer={userAnswer}
           />
         )}
-        {challengeId === "prob_div_01" && (
-          <ExcerciseDivisionBasic
-            index={questionIndex}
+
+        {/* RESTO DE MULTIPLICACIONES: prob_mul_2 a prob_mul_8 */}
+        {challengeId.startsWith("prob_mul_") &&
+          challengeId !== "prob_mul_1" && (
+            <ExcerciseMultiplicationBasic
+              {...exerciseProps}
+              problem={problem as BinaryOpProblem}
+            />
+          )}
+
+        {/* MITADES: prob_div_3 */}
+        {challengeId === "prob_div_3" && (
+          <ExcerciseHalf
+            {...exerciseProps}
             problem={problem as BinaryOpProblem}
-            isCountdownActive={isCountdownActive}
-            totalQuestions={TOTAL_QUESTIONS}
-            userAnswer={userAnswer}
           />
         )}
+
+        {/* RESTO DE DIVISIONES */}
+        {challengeId.startsWith("prob_div_") &&
+          challengeId !== "prob_div_3" && (
+            <ExcerciseDivisionBasic
+              {...exerciseProps}
+              problem={problem as BinaryOpProblem}
+            />
+          )}
 
         <NumericKeypad
           onDigit={handleDigit}
@@ -315,69 +675,86 @@ function ExerciseAttemptPageContent({
         />
       </main>
 
+      {/* Cuenta regresiva */}
       {isCountdownActive && (
-        <CountDown steps={COUNTDOWN_STEPS} onFinish={() => setIsCountdownActive(false)} />
+        <CountDown
+          steps={COUNTDOWN_STEPS}
+          onFinish={() => setIsCountdownActive(false)}
+        />
       )}
 
-      {/* Feedback */}
-      {isCorrect !== null && (
-        <AnimatePresence>
-          {isCorrect !== null && (
-           <motion.div
-      key="feedback-modal"
-      initial={{ opacity: 0, scale: 0.3 }}
-      animate={isCorrect ? 
-        { 
-          opacity: 1, 
-          scale: [0.3, 1.2, 1],  // Solo dos keyframes para bounce
-          rotate: [0, -5, 5, -3, 3, 0],
-          transition: { 
-            type: "tween" as const,  // ← Cambiar a tween
-            duration: 0.5,
-            ease: "easeOut"
-          }
-        } : 
-        { 
-          opacity: 1, 
-          scale: 1,
-          x: [0, -10, 10, -8, 8, -4, 4, 0],
-          transition: { 
-            type: "tween" as const,  // ← Cambiar a tween
-            duration: 0.4,
-            ease: "easeInOut"
-          }
-        }
-      }
-      exit={{ opacity: 0, scale: 0.3 }}
-      className={`absolute top-1/2 left-1/2 z-40 transform -translate-x-1/2 -translate-y-1/2 p-4 rounded-xl ${
-        isCorrect ? 'bg-emerald-500/90 border-emerald-400' : 'bg-red-500/80 border-red-400'
-      } border-2 w-11/12 max-w-xs sm:max-w-md`}
-    >
-              
-                <p className={`text-3xl sm:text-4xl font-bold text-center ${isCorrect ? 'text-emerald-300' : 'text-red-300'}`}>
-                  {isCorrect ? '¡Correcto! 🎉' : `Incorrecto: es`}
-                </p>
-                <p className={`text-5xl sm:text-4xl font-bold text-center ${isCorrect ? 'text-emerald-100' : 'text-red-100'}`}>
-                  {problem.correct}
-                </p>
-                {currentResponseTimeMs !== null && (
-                  <p className="mt-2 text-center text-md sm:text-sm font-semibold text-white/70">
-                    Tiempo: {formatElapsedTime(currentResponseTimeMs)}
-                  </p>
-                )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* Feedback de respuesta */}
+      <AnimatePresence>
+        {isCorrect !== null && (
+          <motion.div
+            key="feedback-modal"
+            initial={{ opacity: 0, scale: 0.3 }}
+            animate={
+              isCorrect
+                ? {
+                    opacity: 1,
+                    scale: [0.3, 1.2, 1],
+                    rotate: [0, -5, 5, -3, 3, 0],
+                    transition: {
+                      type: "tween",
+                      duration: 0.5,
+                      ease: "easeOut",
+                    },
+                  }
+                : {
+                    opacity: 1,
+                    scale: 1,
+                    x: [0, -10, 10, -8, 8, -4, 4, 0],
+                    transition: {
+                      type: "tween",
+                      duration: 0.4,
+                      ease: "easeInOut",
+                    },
+                  }
+            }
+            exit={{ opacity: 0, scale: 0.3 }}
+            className={`absolute top-1/2 left-1/2 z-40 -translate-x-1/2 -translate-y-1/2 p-4 rounded-xl ${
+              isCorrect
+                ? "bg-emerald-500/90 border-emerald-400"
+                : "bg-red-500/80 border-red-400"
+            } border-2 w-11/12 max-w-xs sm:max-w-md`}
+          >
+            <p
+              className={`text-3xl sm:text-4xl font-bold text-center ${
+                isCorrect ? "text-emerald-100" : "text-red-100"
+              }`}
+            >
+              {isCorrect ? "¡Correcto! 🎉" : "Incorrecto: es"}
+            </p>
 
+            <p
+              className={`text-5xl sm:text-4xl font-bold text-center ${
+                isCorrect ? "text-emerald-100" : "text-red-100"
+              }`}
+            >
+              {problem.correct}
+            </p>
 
-      )}
+            {currentResponseTimeMs !== null && (
+              <p className="mt-2 text-center text-md sm:text-sm font-semibold text-white/70">
+                Tiempo: {formatElapsedTime(currentResponseTimeMs)}
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
+// ============================================================
+// COMPONENTE EXPORTADO
+// Se conserva el nombre ExcerciseAttemp para compatibilidad
+// ============================================================
+
 export default function ExcerciseAttemp({
   challengeId,
-  levelId
+  levelId,
 }: {
   challengeId: string;
   levelId: string;
@@ -390,10 +767,10 @@ export default function ExcerciseAttemp({
         </div>
       }
     >
-      <ExerciseAttemptPageContent 
-        challengeId={challengeId} 
-        levelId={levelId} />
-
+      <ExerciseAttemptPageContent
+        challengeId={challengeId}
+        levelId={levelId}
+      />
     </Suspense>
   );
 }
