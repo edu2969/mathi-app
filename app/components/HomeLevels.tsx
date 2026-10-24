@@ -199,7 +199,6 @@ function NivelesPageContent() {
         flex min-h-0 min-w-0
         w-full flex-1
         items-center justify-center
-        overflow-hidden
         px-2 pb-16 pt-1
 
         lg:px-4 lg:py-3

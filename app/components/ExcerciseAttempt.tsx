@@ -330,6 +330,7 @@ function generateProblem(keyLevel: string): Problem {
 
 const TOTAL_QUESTIONS = 3;
 const COUNTDOWN_STEPS = ["3", "2", "1", "Go!"];
+const FEEDBACK_DELAY_MS = 1500;
 
 function formatElapsedTime(timeMs: number): string {
   if (timeMs < 1000) {
@@ -353,7 +354,10 @@ function ExerciseAttemptPageContent({
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { stopAllSounds, isMuted, toggleMute } = useSound();
+  // fadeOutLevelSound es el mismo mecanismo que ya funciona
+  // en la página de niveles (navigateToExercise / handleSignOut).
+  const { playLevelSound, fadeOutLevelSound, isMuted, toggleMute } =
+    useSound();
 
   const [questionIndex, setQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -364,11 +368,28 @@ function ExerciseAttemptPageContent({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [finished, setFinished] = useState(false);
   const [isCountdownActive, setIsCountdownActive] = useState(true);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [currentResponseTimeMs, setCurrentResponseTimeMs] =
     useState<number | null>(null);
 
   const answerTimesRef = useRef<number[]>([]);
   const questionStartTimeRef = useRef<number | null>(null);
+
+  // --- Control de trabajo pendiente ---
+  const timeoutRef = useRef<number | null>(null);
+  // Intento vigente: se incrementa al reintentar o salir.
+  const attemptIdRef = useRef(0);
+  // El componente se está yendo o ya se desmontó.
+  const isLeavingRef = useRef(false);
+  // Evita dobles clics mientras corre el fade out (sin esperar re-render).
+  const isBusyRef = useRef(false);
+
+  const clearPendingTimeout = useCallback(() => {
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
 
   // Genera un problema nuevo al cambiar de pregunta o desafío.
   const problem = useMemo(
@@ -384,14 +405,17 @@ function ExerciseAttemptPageContent({
     mutationFn: async (data: {
       score: number;
       averageTimeMs: number;
+      attemptId: number;
     }) => {
+      const { attemptId: _attemptId, ...body } = data;
+
       const res = await fetch(`/api/attempts/${challengeId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...data,
+          ...body,
           levelId,
         }),
       });
@@ -403,13 +427,8 @@ function ExerciseAttemptPageContent({
       return res.json();
     },
 
-    onSuccess: (resp) => {
-      if (typeof resp.status?.stars === "number") {
-        setStars(
-          Math.max(0, Math.min(3, Math.floor(resp.status.stars))),
-        );
-      }
-
+    onSuccess: (resp, variables) => {
+      // Siempre refrescamos los datos del servidor...
       void queryClient.invalidateQueries({
         queryKey: ["user-challenges"],
       });
@@ -417,6 +436,22 @@ function ExerciseAttemptPageContent({
       void queryClient.invalidateQueries({
         queryKey: ["user-levels"],
       });
+
+      // ...pero solo tocamos la UI si el intento sigue vigente.
+      if (
+        isLeavingRef.current ||
+        variables.attemptId !== attemptIdRef.current
+      ) {
+        return;
+      }
+
+      if (typeof resp.status?.stars === "number") {
+        setStars(
+          Math.max(0, Math.min(3, Math.floor(resp.status.stars))),
+        );
+      }
+
+      playLevelSound(0); // Sonido de finalización del intento.
     },
 
     onError: (error) => {
@@ -490,8 +525,15 @@ function ExerciseAttemptPageContent({
       setScore(nextScore);
     }
 
-    // Mostrar feedback antes de avanzar.
-    window.setTimeout(() => {
+    // Mostrar feedback antes de avanzar (cancelable).
+    clearPendingTimeout();
+
+    timeoutRef.current = window.setTimeout(() => {
+      timeoutRef.current = null;
+
+      // Si el usuario ya salió, no hacemos nada.
+      if (isLeavingRef.current) return;
+
       if (questionIndex + 1 >= TOTAL_QUESTIONS) {
         const avgTimeMs =
           updatedAnswerTimes.reduce(
@@ -506,6 +548,7 @@ function ExerciseAttemptPageContent({
         attemptRegistrationMutation.mutate({
           score: nextScore,
           averageTimeMs: avgTimeMs,
+          attemptId: attemptIdRef.current,
         });
       } else {
         setQuestionIndex((index) => index + 1);
@@ -514,9 +557,10 @@ function ExerciseAttemptPageContent({
         setIsCorrect(null);
         setCurrentResponseTimeMs(null);
       }
-    }, 1500);
+    }, FEEDBACK_DELAY_MS);
   }, [
     attemptRegistrationMutation,
+    clearPendingTimeout,
     isCountdownActive,
     isSubmitted,
     userAnswer,
@@ -545,15 +589,44 @@ function ExerciseAttemptPageContent({
     questionStartTimeRef.current = null;
   }, []);
 
-  const handleRetry = useCallback(() => {
-    stopAllSounds();
-    restart();
-  }, [stopAllSounds, restart]);
+  const handleRetry = useCallback(async () => {
+    if (isBusyRef.current) return;
+    isBusyRef.current = true;
+    setIsNavigating(true);
 
-  const handleBackToLevels = useCallback(() => {
-    stopAllSounds();
-    router.push("/levels");
-  }, [router, stopAllSounds]);
+    clearPendingTimeout();
+    // Invalida cualquier respuesta de mutación pendiente del intento anterior.
+    attemptIdRef.current += 1;
+
+    try {
+      await fadeOutLevelSound();
+    } finally {
+      // Si mientras tanto el usuario salió, no reiniciamos nada.
+      if (!isLeavingRef.current) {
+        restart();
+      }
+
+      isBusyRef.current = false;
+      setIsNavigating(false);
+    }
+  }, [clearPendingTimeout, fadeOutLevelSound, restart]);
+
+  const handleBackToLevels = useCallback(async () => {
+    if (isBusyRef.current) return;
+    isBusyRef.current = true;
+    setIsNavigating(true);
+
+    // Igual que en la página de niveles: fade out y luego navegar.
+    isLeavingRef.current = true;
+    attemptIdRef.current += 1;
+    clearPendingTimeout();
+
+    try {
+      await fadeOutLevelSound();
+    } finally {
+      router.push("/levels");
+    }
+  }, [clearPendingTimeout, fadeOutLevelSound, router]);
 
   // ----------------------------------------------------------
   // RESULTADOS FINALES
@@ -566,8 +639,12 @@ function ExerciseAttemptPageContent({
         score={score}
         totalQuestions={TOTAL_QUESTIONS}
         averageTimeMs={averageTimeMs}
-        onRetry={handleRetry}
-        onBack={handleBackToLevels}
+        onRetry={() => {
+          void handleRetry();
+        }}
+        onBack={() => {
+          void handleBackToLevels();
+        }}
       />
     );
   }
@@ -588,8 +665,12 @@ function ExerciseAttemptPageContent({
       {/* Barra superior */}
       <header className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-2 sm:px-6 py-3 sm:py-4 bg-transparent">
         <button
-          onClick={handleBackToLevels}
-          className="flex items-center gap-2 text-xs sm:text-sm font-medium text-black hover:text-white transition-colors"
+          type="button"
+          onClick={() => {
+            void handleBackToLevels();
+          }}
+          disabled={isNavigating}
+          className="flex items-center gap-2 text-xs sm:text-sm font-medium text-black hover:text-white transition-colors disabled:cursor-not-allowed disabled:opacity-70"
         >
           <Image
             src="/flecha_izquierda.png"
@@ -604,6 +685,7 @@ function ExerciseAttemptPageContent({
         </button>
 
         <button
+          type="button"
           onClick={toggleMute}
           aria-label={isMuted ? "Activar sonido" : "Silenciar"}
           className="bg-black/50 backdrop-blur-sm p-2 sm:p-3 rounded-full transition-all duration-200 hover:bg-black/70"
@@ -671,7 +753,7 @@ function ExerciseAttemptPageContent({
           onDigit={handleDigit}
           onDelete={handleDelete}
           onSubmit={handleSubmit}
-          disabled={isCountdownActive || isSubmitted}
+          disabled={isCountdownActive || isSubmitted || isNavigating}
         />
       </main>
 

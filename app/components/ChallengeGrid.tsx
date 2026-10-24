@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { ChallengesResponse } from "../types/types";
 import ProportionalSymbol from "./prefabs/ProportionalSymbol";
+import ChallengeTileBack from "./prefabs/ChallengeTileBack";
 
 interface ChallengeGridProps {
 challenges: ChallengesResponse[];
@@ -21,7 +22,6 @@ return (
     <div
         className="
             h-full w-full min-h-0 min-w-0
-            overflow-hidden
             flex items-center justify-center
         "
     >
@@ -51,7 +51,7 @@ return (
                         relative
                         h-full w-full min-h-0 min-w-0
                         max-w-36
-                        overflow-hidden rounded-xl
+                        rounded-xl
                         transition-transform duration-200
                         focus-visible:outline-2
                         focus-visible:outline-offset-2
@@ -68,19 +68,7 @@ return (
                         width: "auto",
                     }}
                 >
-                    <Image
-                        src="/desafio_back_vacio.png"
-                        alt=""
-                        fill
-                        sizes="
-                            (max-width: 639px) 23vw,
-                            (max-width: 767px) 18vw,
-                            (max-width: 1023px) 15vw,
-                            13vw
-                        "
-                        className="object-fill"
-                        priority={index < 7}
-                    />
+                    <ChallengeTileBack className="w-full h-full">
 
                     <div
                         className="
@@ -92,6 +80,7 @@ return (
                     >
                         <ProportionalSymbol symbol={challenge.symbol} />
                     </div>
+                    </ChallengeTileBack>
 
                     <div
                         className="
@@ -126,7 +115,7 @@ return (
                             className="
                                 absolute inset-0
                                 flex items-center justify-center
-                                bg-black/50 rounded-xl
+                                bg-black/50 rounded-4xl
                             "
                         >
                             <Image
