@@ -19,9 +19,9 @@ interface FinishedResultsProps {
 
 // Definido fuera del componente para que la referencia sea estable.
 const RESULT_SOUNDS: SoundMap = {
-    result_1: { src: "/sounds/result_1.mp3", volume: 0.7 },
-    result_2: { src: "/sounds/result_2.mp3", volume: 0.7 },
-    result_3: { src: "/sounds/result_3.mp3", volume: 0.7 },
+    result_1: { src: "/sounds/result_01.mp3", volume: 0.7 },
+    result_2: { src: "/sounds/result_02.mp3", volume: 0.7 },
+    result_3: { src: "/sounds/result_03.mp3", volume: 0.7 },
 };
 
 const EVALUATION_DELAY_MS = 2000;
@@ -54,14 +54,14 @@ const FinishedResultsContent: React.FC<FinishedResultsProps> = ({
 
     // Fondo y sonido según las estrellas
     let bgImg = "/result_bg-1.png";
-    let soundId = "result_1";
+    let soundId = "result_01";
     if (stars === 2) {
         bgImg = "/result_bg-2.png";
-        soundId = "result_2";
+        soundId = "result_02";
     }
     if (stars === 3) {
         bgImg = "/result_bg-3.png";
-        soundId = "result_3";
+        soundId = "result_03";
     }
 
     // Simula el tiempo de evaluación (2 segundos)

@@ -33,12 +33,12 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    apple: "/apple-touch-icon.png",
-    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon_2.png",
+    shortcut: "/favicon_2.ico",
     icon: [
-      { url: "/favicon.ico", sizes: "16x16 32x32 48x48 256x256", type: "image/x-icon" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon_2.ico", sizes: "16x16 32x32 48x48 256x256", type: "image/x-icon" },
+      { url: "/icon-192_2.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512_2.png", sizes: "512x512", type: "image/png" },
     ],
   },
 };
