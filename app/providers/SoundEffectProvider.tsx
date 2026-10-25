@@ -16,11 +16,8 @@ import {
 // ============================================================
 
 export interface SoundConfig {
-  /** Ruta del archivo, p. ej. "/sounds/result_1.mp3". */
   src: string;
-  /** Repetir en bucle. Por defecto false. */
   loop?: boolean;
-  /** Volumen base entre 0 y 1. Por defecto 1. */
   volume?: number;
 }
 

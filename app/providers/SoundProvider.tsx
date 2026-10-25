@@ -57,7 +57,8 @@ export default function SoundProvider({ children }: { children: React.ReactNode 
 
     // Cargar sonidos de resultado
     for (let i = 1; i <= 3; i++) {
-      const audio = new Audio(`/sounds/result_${i}.mp3`);
+      console.log("Registrando sonido de resultado:", `/sounds/result_0${i}.mp3`);
+      const audio = new Audio(`/sounds/result_0${i}.mp3`);
       audio.preload = "auto";
       audio.volume = 0.7;
       resultSoundsRef.current[i] = audio;

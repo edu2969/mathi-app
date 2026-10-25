@@ -54,14 +54,14 @@ const FinishedResultsContent: React.FC<FinishedResultsProps> = ({
 
     // Fondo y sonido según las estrellas
     let bgImg = "/result_bg-1.png";
-    let soundId = "result_01";
+    let soundId = "result_1";
     if (stars === 2) {
         bgImg = "/result_bg-2.png";
-        soundId = "result_02";
+        soundId = "result_2";
     }
     if (stars === 3) {
         bgImg = "/result_bg-3.png";
-        soundId = "result_03";
+        soundId = "result_3";
     }
 
     // Simula el tiempo de evaluación (2 segundos)
